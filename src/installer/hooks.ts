@@ -1,6 +1,6 @@
 /**
  * Hook Scripts for Claude Code
- * Direct port of oh-my-opencode hooks for Claude Code's native hooks system
+ * Hook system inspired by oh-my-opencode, adapted for Claude Code's native hooks
  *
  * Claude Code hooks are configured in settings.json and run as shell commands.
  * These scripts receive JSON input via stdin and output JSON to modify behavior.

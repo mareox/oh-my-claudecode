@@ -2,7 +2,7 @@
  * Oh-My-Claude-Sisyphus
  *
  * A multi-agent orchestration system for the Claude Agent SDK.
- * Port of oh-my-opencode for Claude.
+ * Inspired by oh-my-opencode, reimagined for Claude Code.
  *
  * Main features:
  * - Sisyphus: Primary orchestrator that delegates to specialized subagents

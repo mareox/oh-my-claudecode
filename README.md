@@ -50,7 +50,7 @@ See [CHANGELOG.md](CHANGELOG.md) for full details.
 >
 > **Today:** The boulder rolls. The agents orchestrate. The chaos continues.
 
-*Port of [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode).*
+*Inspired by [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode).*
 
 ---
 
@@ -498,11 +498,11 @@ for await (const message of query({
 <details>
 <summary><h2>Differences from oh-my-opencode</h2></summary>
 
-This is a port of [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode) adapted for Claude Code and the Claude Agent SDK. Here's what's different:
+This project is inspired by [oh-my-opencode](https://github.com/code-yeongyu/oh-my-opencode), reimagined for Claude Code with skill composition, intelligent model routing, and native integration. Here's what's different:
 
 ### Model Mapping
 
-The original oh-my-opencode used multiple AI providers. This port uses Claude models exclusively:
+The original oh-my-opencode used multiple AI providers. This project uses Claude models exclusively:
 
 | Agent | Original Model | Ported Model | Notes |
 |-------|---------------|--------------|-------|
