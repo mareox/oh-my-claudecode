@@ -190,20 +190,19 @@ export interface RoutingConfig {
 
 /**
  * Default routing configuration
+ *
+ * ALL agents are adaptive except orchestrators.
+ * Agent overrides are only for orchestrator-sisyphus (fixed to Opus).
  */
 export const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
   enabled: true,
   defaultTier: 'MEDIUM',
-  escalationEnabled: true,
-  maxEscalations: 2,
+  escalationEnabled: false,  // Deprecated: orchestrator routes proactively
+  maxEscalations: 0,
   tierModels: TIER_MODELS,
   agentOverrides: {
-    oracle: { tier: 'HIGH', reason: 'Advisory agent requires deep reasoning' },
-    prometheus: { tier: 'HIGH', reason: 'Strategic planning requires deep reasoning' },
-    momus: { tier: 'HIGH', reason: 'Critical review requires deep reasoning' },
-    metis: { tier: 'HIGH', reason: 'Pre-planning analysis requires deep reasoning' },
-    explore: { tier: 'LOW', reason: 'Exploration is search-focused' },
-    'document-writer': { tier: 'LOW', reason: 'Documentation is straightforward' },
+    // Only orchestrators are fixed - they need Opus to analyze and delegate
+    'orchestrator-sisyphus': { tier: 'HIGH', reason: 'Orchestrator requires Opus to analyze and delegate' },
   },
   escalationKeywords: [
     'critical', 'production', 'urgent', 'security', 'breaking',

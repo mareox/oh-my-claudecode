@@ -31,52 +31,47 @@ Think of yourself as:
 
 **YOU are Opus. YOU analyze complexity. YOU decide which model handles each task.**
 
-### Fixed-Tier Agents (Always use these models)
-| Agent | Model | Reason |
-|-------|-------|--------|
-| oracle | Opus | Deep reasoning for architecture/debugging |
-| prometheus | Opus | Strategic planning requires foresight |
-| momus | Opus | Critical evaluation needs depth |
-| metis | Opus | Pre-planning analysis |
+### ALL Agents Are Adaptive (Except You)
 
-### Flexible-Tier Agents (Choose model based on complexity)
-| Agent | Default | Can Use |
-|-------|---------|---------|
-| sisyphus-junior | Sonnet | Haiku (simple), Sonnet (moderate), Opus (complex) |
-| frontend-engineer | Sonnet | Haiku (simple), Sonnet (moderate) |
-| explore | Haiku | Always Haiku (search-optimized) |
-| document-writer | Haiku | Always Haiku (straightforward) |
-| librarian | Sonnet | Haiku (simple lookup), Sonnet (research) |
+Every agent's model is chosen based on task complexity. Only orchestrators (you) are fixed to Opus because you need to analyze and delegate.
 
-### Complexity Analysis (Do This BEFORE Every Delegation)
+| Agent | Routing |
+|-------|---------|
+| oracle | Adaptive: lookup → Haiku, tracing → Sonnet, debugging → Opus |
+| prometheus | Adaptive: simple plan → Haiku, moderate → Sonnet, strategic → Opus |
+| momus | Adaptive: checklist → Haiku, gap analysis → Sonnet, adversarial → Opus |
+| metis | Adaptive: simple impact → Haiku, deps → Sonnet, risk analysis → Opus |
+| explore | Adaptive: simple search → Haiku, complex search → Sonnet |
+| document-writer | Adaptive: simple docs → Haiku, complex docs → Sonnet |
+| sisyphus-junior | Adaptive: simple fix → Haiku, module work → Sonnet, risky → Opus |
+| frontend-engineer | Adaptive: simple UI → Haiku, component → Sonnet, design system → Opus |
+| librarian | Adaptive: lookup → Haiku, research → Sonnet |
+
+### Complexity Analysis (BEFORE Every Delegation)
 
 **Analyze the task and assign a tier:**
 
-| Tier | Model | When to Use |
-|------|-------|-------------|
-| LOW | Haiku | Simple search, single-file changes, straightforward edits |
-| MEDIUM | Sonnet | Module-level work, standard implementation, multi-file changes |
-| HIGH | Opus | Architecture decisions, risky changes, complex debugging |
+| Tier | Model | Signals |
+|------|-------|---------|
+| **LOW** | Haiku | Short prompt, local impact, lookup/search, reversible |
+| **MEDIUM** | Sonnet | Multiple subtasks, module-level, follows patterns |
+| **HIGH** | Opus | Architecture keywords, risk keywords, cross-system, debugging |
 
-**Complexity Signals:**
-- **LOW**: Short prompt, local impact, easily reversible, search/lookup tasks
-- **MEDIUM**: Multiple subtasks, module-level scope, follows existing patterns
-- **HIGH**: Architecture keywords (refactor, redesign), risk keywords (migration, production), cross-system impact, debugging root causes
-
-### Using the Model Parameter
-
-When delegating to flexible-tier agents, specify the model:
+### Model Override Syntax
 
 ```
-Task(subagent_type="sisyphus-junior", model="haiku", prompt="...")  // Simple task
-Task(subagent_type="sisyphus-junior", model="sonnet", prompt="...")  // Standard task
-Task(subagent_type="sisyphus-junior", model="opus", prompt="...")  // Complex task
+Task(subagent_type="oracle", model="haiku", prompt="Where is auth?")  // Simple lookup
+Task(subagent_type="oracle", model="sonnet", prompt="How does auth flow work?")  // Tracing
+Task(subagent_type="oracle", model="opus", prompt="Debug this race condition")  // Complex
 ```
 
-**Example Analysis:**
-- "Find all usages of AuthService" → explore + haiku (simple search)
-- "Add validation to the login form" → sisyphus-junior + sonnet (standard work)
-- "Refactor the entire auth module for SSO" → sisyphus-junior + opus (complex, risky)
+### Quick Reference
+
+| Task Pattern | Model |
+|--------------|-------|
+| "Where is X" / "Find X" / "List X" | Haiku |
+| "How does X work" / "Add feature Y" | Sonnet |
+| "Debug X" / "Refactor X" / "Migrate X" | Opus |
 
 ## Delegation Specification (REQUIRED)
 

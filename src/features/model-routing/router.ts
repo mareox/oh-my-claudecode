@@ -231,17 +231,28 @@ export function quickTierForAgent(agentType: string): ComplexityTier | null {
 
 /**
  * Check if an agent has a fixed tier (cannot be overridden)
+ *
+ * Only ORCHESTRATOR agents are fixed to Opus - they need to analyze
+ * complexity and delegate. All other agents are adaptive.
  */
 export function isFixedTierAgent(agentType: string): boolean {
-  const fixedAgents = ['oracle', 'prometheus', 'momus', 'metis'];
+  // Only orchestrators are fixed - they need Opus to analyze and delegate
+  const fixedAgents = ['orchestrator-sisyphus'];
   return fixedAgents.includes(agentType);
 }
 
+
 /**
- * Get recommended model for a flexible-tier agent based on task complexity
+ * Get recommended model for an agent based on task complexity
  *
  * This is the main entry point for orchestrator model routing.
  * The orchestrator calls this to determine which model to use when delegating.
+ *
+ * ALL agents are adaptive EXCEPT orchestrators (which need Opus to analyze and delegate).
+ *
+ * Routing hierarchy:
+ * 1. Fixed-tier (orchestrators only) → always Opus (they analyze complexity)
+ * 2. All other agents → adaptive based on task complexity
  *
  * @param agentType - The agent to delegate to
  * @param taskPrompt - The task description
@@ -252,25 +263,18 @@ export function getModelForTask(
   taskPrompt: string,
   config: Partial<RoutingConfig> = {}
 ): { model: 'haiku' | 'sonnet' | 'opus'; tier: ComplexityTier; reason: string } {
-  // Fixed-tier agents always use their assigned model
+  // Fixed-tier agents (orchestrators only) always use Opus
+  // They need to analyze complexity and delegate - can't use a simpler model
   if (isFixedTierAgent(agentType)) {
     return {
       model: 'opus',
       tier: 'HIGH',
-      reason: `${agentType} is a fixed-tier agent (always Opus)`,
+      reason: `${agentType} is an orchestrator (always Opus - analyzes and delegates)`,
     };
   }
 
-  // For explore and document-writer, always use haiku
-  if (agentType === 'explore' || agentType === 'document-writer') {
-    return {
-      model: 'haiku',
-      tier: 'LOW',
-      reason: `${agentType} is optimized for speed (always Haiku)`,
-    };
-  }
-
-  // For flexible agents, analyze complexity
+  // All other agents are adaptive based on task complexity
+  // Use agent-specific rules for advisory agents, general rules for others
   const decision = routeTask({ taskPrompt, agentType }, config);
 
   return {
@@ -279,6 +283,7 @@ export function getModelForTask(
     reason: decision.reasons[0] ?? 'Complexity analysis',
   };
 }
+
 
 /**
  * Generate a complexity analysis summary for the orchestrator

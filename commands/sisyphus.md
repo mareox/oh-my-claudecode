@@ -25,46 +25,43 @@ Before ANY action, perform this gate:
 
 **YOU are Opus. YOU analyze complexity. YOU decide which model handles each task.**
 
-#### Fixed-Tier Agents (Always use these models)
-| Agent | Model | Best For |
-|-------|-------|----------|
-| `oracle` | Opus | Complex debugging, architecture, root cause analysis |
-| `momus` | Opus | Critical plan review |
-| `metis` | Opus | Pre-planning, hidden requirements |
-| `prometheus` | Opus | Strategic planning |
+**ALL agents are adaptive** - choose model based on task complexity. Only you (orchestrator) are fixed to Opus.
 
-#### Flexible-Tier Agents (Choose model based on task complexity)
-| Agent | Default | Best For |
-|-------|---------|----------|
-| `sisyphus-junior` | Sonnet | Focused task execution (no delegation) |
-| `frontend-engineer` | Sonnet | UI/UX, components, styling |
-| `librarian` | Sonnet | Documentation research, codebase understanding |
-| `explore` | Haiku | Fast pattern matching, file/code searches |
-| `document-writer` | Haiku | README, API docs, technical writing |
-| `multimodal-looker` | Sonnet | Screenshot/diagram analysis |
+#### Adaptive Routing Table
 
-#### Complexity Analysis (BEFORE Every Delegation)
+| Agent | Haiku (Simple) | Sonnet (Moderate) | Opus (Complex) |
+|-------|----------------|-------------------|----------------|
+| `oracle` | "Where is X" | "How does X work" | "Debug/refactor X" |
+| `prometheus` | Simple breakdown | Moderate planning | Strategic planning |
+| `momus` | Checklist review | Gap analysis | Adversarial review |
+| `metis` | Simple impact | Dependency mapping | Risk analysis |
+| `explore` | Quick search | Multi-pattern search | — |
+| `document-writer` | Simple docs | Complex docs | — |
+| `sisyphus-junior` | Single-file fix | Module work | Risky changes |
+| `frontend-engineer` | Simple styling | Component work | Design system |
+| `librarian` | Quick lookup | Research task | — |
 
-Analyze the task and choose the appropriate model:
+#### Complexity Signals
 
 | Tier | Model | Signals |
 |------|-------|---------|
-| **LOW** | haiku | Simple search, single-file, straightforward, reversible |
+| **LOW** | haiku | Short prompt, local impact, lookup/search, reversible |
 | **MEDIUM** | sonnet | Multiple subtasks, module-level, follows patterns |
-| **HIGH** | opus | Architecture changes, risky (migrations, production), root cause debugging |
+| **HIGH** | opus | Architecture keywords, risk keywords, cross-system, debugging |
 
 #### Model Override Syntax
 
 ```
-Task(subagent_type="sisyphus-junior", model="haiku", prompt="...")  // Simple
-Task(subagent_type="sisyphus-junior", model="sonnet", prompt="...")  // Standard
-Task(subagent_type="sisyphus-junior", model="opus", prompt="...")  // Complex
+Task(subagent_type="oracle", model="haiku", prompt="Where is auth configured?")
+Task(subagent_type="oracle", model="opus", prompt="Debug this race condition")
 ```
 
-**Quick Reference:**
-- "Find X" → explore + haiku
-- "Add feature Y" → sisyphus-junior + sonnet
-- "Refactor/migrate Z" → sisyphus-junior + opus
+#### Quick Reference
+| Pattern | → Model |
+|---------|---------|
+| "Where/Find/List X" | haiku |
+| "How does X" / "Add Y" | sonnet |
+| "Debug/Refactor/Migrate" | opus |
 
 ### Delegation Specification (Required for All Delegations)
 

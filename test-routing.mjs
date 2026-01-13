@@ -86,16 +86,23 @@ for (const agent of agents) {
 console.log('\n--- Test 3: Proactive Model Selection (getModelForTask) ---\n');
 
 const modelTestCases = [
-  // Short prompts → LOW (haiku)
+  // Worker agents - adaptive based on task
   { agent: 'sisyphus-junior', prompt: 'Fix this typo in the README', expectedModel: 'haiku' },
-  { agent: 'sisyphus-junior', prompt: 'Add validation to the login form', expectedModel: 'haiku' },  // Short, no risk signals
-  // Module-level work → MEDIUM (sonnet)
-  { agent: 'sisyphus-junior', prompt: 'Refactor the auth module to use OAuth2 and migrate all users', expectedModel: 'sonnet' },  // refactor triggers module-level
-  // Risk keywords → HIGH (opus)
   { agent: 'sisyphus-junior', prompt: 'Refactor payment system with migration scripts for production data', expectedModel: 'opus' },
-  // Fixed tier agents (always use their model regardless of prompt)
-  { agent: 'oracle', prompt: 'Simple question', expectedModel: 'opus' },
-  { agent: 'explore', prompt: 'Complex architecture analysis', expectedModel: 'haiku' },
+
+  // Oracle - adaptive: lookup → haiku, complex → opus
+  { agent: 'oracle', prompt: 'Where is the auth middleware configured?', expectedModel: 'haiku' },
+  { agent: 'oracle', prompt: 'Debug this race condition in the payment system', expectedModel: 'opus' },
+
+  // Prometheus - adaptive: simple → haiku, strategic → opus
+  { agent: 'prometheus', prompt: 'List the steps to add a button', expectedModel: 'haiku' },
+  { agent: 'prometheus', prompt: 'Design the migration strategy for our monolith to microservices with risk analysis', expectedModel: 'opus' },
+
+  // Explore - adaptive (not fixed to haiku anymore)
+  { agent: 'explore', prompt: 'Find all .ts files', expectedModel: 'haiku' },
+
+  // Orchestrator - ONLY fixed tier (always opus)
+  { agent: 'orchestrator-sisyphus', prompt: 'Simple task', expectedModel: 'opus' },
 ];
 
 console.log('Orchestrator proactively selects model based on task complexity:\n');
@@ -110,12 +117,13 @@ for (const test of modelTestCases) {
   console.log('');
 }
 
-console.log('--- Test 3b: Fixed vs Flexible Tier Agents ---\n');
+console.log('--- Test 3b: Fixed vs Adaptive Agents ---\n');
 
-const allAgents = ['oracle', 'prometheus', 'momus', 'metis', 'explore', 'sisyphus-junior', 'frontend-engineer'];
+const allAgents = ['orchestrator-sisyphus', 'oracle', 'prometheus', 'momus', 'metis', 'explore', 'sisyphus-junior', 'frontend-engineer'];
+console.log('Only orchestrators are fixed to Opus. All others are adaptive:\n');
 for (const agent of allAgents) {
   const isFixed = isFixedTierAgent(agent);
-  console.log(`  ${agent}: ${isFixed ? 'FIXED (always Opus)' : 'FLEXIBLE (complexity-based)'}`);
+  console.log(`  ${agent}: ${isFixed ? '🔒 FIXED (always Opus - analyzes & delegates)' : '🔄 ADAPTIVE (complexity-based)'}`);
 }
 
 console.log('\n--- Test 4: Prompt Adaptation ---\n');

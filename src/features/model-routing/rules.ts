@@ -25,51 +25,107 @@ export const DEFAULT_ROUTING_RULES: RoutingRule[] = [
     priority: 100,
   },
 
-  // NOTE: Escalation is handled by routeWithEscalation(), not in rules
-  // This allows gradual escalation: LOW → MEDIUM → HIGH
+  // NOTE: ALL agents are now ADAPTIVE based on task complexity
+  // Only orchestrators (orchestrator-sisyphus) are fixed to Opus
+  // This includes: oracle, prometheus, momus, metis, explore, document-writer, etc.
 
-  // ============ Agent-Based Rules ============
+  // ============ Orchestrator Rule (Fixed Tier) ============
 
   {
-    name: 'advisor-agents-oracle',
-    condition: (ctx) => ctx.agentType === 'oracle',
-    action: { tier: 'HIGH', reason: 'Oracle requires deep reasoning for architecture/debugging' },
-    priority: 80,
+    name: 'orchestrator-fixed-opus',
+    condition: (ctx) => ctx.agentType === 'orchestrator-sisyphus',
+    action: { tier: 'HIGH', reason: 'Orchestrator requires Opus to analyze complexity and delegate' },
+    priority: 90,
+  },
+
+  // ============ Advisory Agent Adaptive Rules ============
+
+  // Oracle: Simple lookups → LOW, tracing → MEDIUM, debugging/architecture → HIGH
+  // Higher priority (85) to override generic rules like short-local-change
+  {
+    name: 'oracle-complex-debugging',
+    condition: (ctx, signals) =>
+      ctx.agentType === 'oracle' &&
+      (signals.lexical.hasDebuggingKeywords ||
+       signals.lexical.hasArchitectureKeywords ||
+       signals.lexical.hasRiskKeywords),
+    action: { tier: 'HIGH', reason: 'Oracle: Complex debugging/architecture decision' },
+    priority: 85,
   },
 
   {
-    name: 'advisor-agents-prometheus',
-    condition: (ctx) => ctx.agentType === 'prometheus',
-    action: { tier: 'HIGH', reason: 'Prometheus requires strategic planning capabilities' },
+    name: 'oracle-simple-lookup',
+    condition: (ctx, signals) =>
+      ctx.agentType === 'oracle' &&
+      signals.lexical.hasSimpleKeywords &&
+      !signals.lexical.hasDebuggingKeywords &&
+      !signals.lexical.hasArchitectureKeywords &&
+      !signals.lexical.hasRiskKeywords,
+    action: { tier: 'LOW', reason: 'Oracle: Simple lookup query' },
     priority: 80,
   },
 
+  // Prometheus: Simple breakdown → LOW, moderate planning → MEDIUM, cross-domain → HIGH
   {
-    name: 'advisor-agents-momus',
-    condition: (ctx) => ctx.agentType === 'momus',
-    action: { tier: 'HIGH', reason: 'Momus requires critical evaluation capabilities' },
-    priority: 80,
+    name: 'prometheus-simple-breakdown',
+    condition: (ctx, signals) =>
+      ctx.agentType === 'prometheus' &&
+      signals.structural.estimatedSubtasks <= 3 &&
+      !signals.lexical.hasRiskKeywords &&
+      signals.structural.impactScope === 'local',
+    action: { tier: 'LOW', reason: 'Prometheus: Simple task breakdown' },
+    priority: 75,
   },
 
   {
-    name: 'advisor-agents-metis',
-    condition: (ctx) => ctx.agentType === 'metis',
-    action: { tier: 'HIGH', reason: 'Metis requires pre-planning analysis capabilities' },
-    priority: 80,
+    name: 'prometheus-strategic-planning',
+    condition: (ctx, signals) =>
+      ctx.agentType === 'prometheus' &&
+      (signals.structural.impactScope === 'system-wide' ||
+       signals.lexical.hasArchitectureKeywords ||
+       signals.structural.estimatedSubtasks > 10),
+    action: { tier: 'HIGH', reason: 'Prometheus: Cross-domain strategic planning' },
+    priority: 75,
+  },
+
+  // Momus: Checklist → LOW, gap analysis → MEDIUM, adversarial review → HIGH
+  {
+    name: 'momus-checklist-review',
+    condition: (ctx, signals) =>
+      ctx.agentType === 'momus' &&
+      signals.lexical.wordCount < 30 &&
+      !signals.lexical.hasRiskKeywords,
+    action: { tier: 'LOW', reason: 'Momus: Checklist verification' },
+    priority: 75,
   },
 
   {
-    name: 'exploration-agent',
-    condition: (ctx) => ctx.agentType === 'explore',
-    action: { tier: 'LOW', reason: 'Exploration is search-focused, optimized for speed' },
-    priority: 80,
+    name: 'momus-adversarial-review',
+    condition: (ctx, signals) =>
+      ctx.agentType === 'momus' &&
+      (signals.lexical.hasRiskKeywords || signals.structural.impactScope === 'system-wide'),
+    action: { tier: 'HIGH', reason: 'Momus: Adversarial review for critical system' },
+    priority: 75,
+  },
+
+  // Metis: Simple impact → LOW, dependency mapping → MEDIUM, risk analysis → HIGH
+  {
+    name: 'metis-simple-impact',
+    condition: (ctx, signals) =>
+      ctx.agentType === 'metis' &&
+      signals.structural.impactScope === 'local' &&
+      !signals.lexical.hasRiskKeywords,
+    action: { tier: 'LOW', reason: 'Metis: Simple impact analysis' },
+    priority: 75,
   },
 
   {
-    name: 'document-writer-agent',
-    condition: (ctx) => ctx.agentType === 'document-writer',
-    action: { tier: 'LOW', reason: 'Documentation is straightforward, optimized for speed' },
-    priority: 80,
+    name: 'metis-risk-analysis',
+    condition: (ctx, signals) =>
+      ctx.agentType === 'metis' &&
+      (signals.lexical.hasRiskKeywords || signals.structural.impactScope === 'system-wide'),
+    action: { tier: 'HIGH', reason: 'Metis: Risk analysis and unknown-unknowns detection' },
+    priority: 75,
   },
 
   // ============ Task-Based Rules ============
