@@ -2,9 +2,9 @@
 
 ![oh-my-claude-sisyphus](https://raw.githubusercontent.com/Yeachan-Heo/oh-my-claude-sisyphus-website/main/social-preview.png)
 
-# 🚀 v2.0.1 - Claude Code Native Multi-Agent Orchestration
+# 🚀 v2.0.5 - Claude Code Native Multi-Agent Orchestration
 
-[![Version](https://img.shields.io/badge/version-2.0.1-ff6b6b)](https://github.com/Yeachan-Heo/oh-my-claude-sisyphus/releases)
+[![Version](https://img.shields.io/badge/version-2.0.5-ff6b6b)](https://github.com/Yeachan-Heo/oh-my-claude-sisyphus/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Agents](https://img.shields.io/badge/Agents-19-ff0040)](https://github.com/Yeachan-Heo/oh-my-claude-sisyphus)
 [![Days Since Ban](https://img.shields.io/badge/Days%20Since%20Ban-0-00ffff)](https://github.com/Yeachan-Heo/oh-my-claude-sisyphus)
@@ -91,6 +91,25 @@ cd oh-my-claude-sisyphus
 chmod +x scripts/install.sh
 ./scripts/install.sh
 ```
+
+---
+
+## 🎯 After Installation: Run /sisyphus-default
+
+**For best performance**, run this command in Claude Code after installation:
+
+```
+/sisyphus-default
+```
+
+This command will:
+1. ✅ Update `~/.claude/CLAUDE.md` with the latest Sisyphus configuration
+2. ✅ Install hook scripts to `~/.claude/hooks/`
+3. ✅ Configure 19 agents with smart model routing
+4. ✅ Enable keyword detection (ultrawork, search, analyze modes)
+
+> **Note:** If you installed via the **curl one-liner**, this is already done automatically.
+> For **plugin** or **npm** installs, running `/sisyphus-default` ensures full configuration.
 
 ---
 
