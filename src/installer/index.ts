@@ -2424,11 +2424,11 @@ Notepad content is automatically loaded on session start:
 
 This helps survive conversation compaction without losing critical context.`,
 
-  'claudeception.md': `---
-description: Extract a learned skill from the current conversation
+  'mnemosyne.md': `---
+description: Extract a learned skill from the current conversation (Mnemosyne - goddess of memory)
 ---
 
-# Claudeception - Skill Extraction
+# Mnemosyne - Skill Extraction
 
 You are being asked to extract a reusable skill from the current conversation.
 
@@ -2436,7 +2436,7 @@ $ARGUMENTS
 
 ## What This Does
 
-Claudeception saves knowledge you've discovered during problem-solving as a reusable "skill" that will be automatically loaded in future sessions when similar problems arise.
+Mnemosyne (named after the Greek goddess of memory) saves knowledge you've discovered during problem-solving as a reusable "skill" that will be automatically loaded in future sessions when similar problems arise.
 
 ## Extraction Process
 
@@ -2460,7 +2460,7 @@ Claudeception saves knowledge you've discovered during problem-solving as a reus
 
 ## When to Use
 
-Use /claudeception after:
+Use /mnemosyne after:
 - Solving a tricky bug through investigation
 - Discovering a non-obvious workaround
 - Learning a project-specific pattern
@@ -2472,7 +2472,7 @@ Skills are saved as markdown files with YAML frontmatter containing:
 - id: Unique identifier
 - name: Human-readable name
 - description: Brief description
-- source: "extracted" for /claudeception skills
+- source: "extracted" for /mnemosyne skills
 - triggers: Array of keywords that activate the skill
 - quality: Score from quality validation
 
