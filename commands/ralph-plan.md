@@ -54,60 +54,116 @@ Ralph-Plan orchestrates three specialized agents in an iterative loop until all 
 └─────────────────────────────────────────────────────────────────┘
 ```
 
+## State Tracking
+
+Ralph-plan maintains state in `.sisyphus/ralph-plan-state.json`:
+
+```json
+{
+  "active": true,
+  "mode": "ralph-plan",
+  "iteration": 1,
+  "max_iterations": 5,
+  "plan_path": ".sisyphus/plans/[feature].md",
+  "current_phase": "prometheus_planning",
+  "started_at": "ISO-timestamp",
+  "task_description": "[original task]"
+}
+```
+
+**Phases**: `prometheus_planning` → `oracle_consultation` → `momus_review` → `handling_verdict` → `complete`
+
 ## Execution Protocol
 
 ### Step 1: Initialize
+
 ```
+[RALPH-PLAN Iteration 0/5] Initializing...
+
 1. Create .sisyphus/plans/ if not exists
-2. Read any existing context from user input
-3. Set iteration_count = 0, max_iterations = 5
+2. Read task description from $ARGUMENTS
+3. Create ralph-plan-state.json:
+   - active: true
+   - iteration: 0
+   - max_iterations: 5
+   - current_phase: "prometheus_planning"
+   - started_at: [ISO timestamp]
+   - task_description: [from arguments]
 ```
 
-### Step 2: Prometheus Creates Initial Plan
+### Step 2: Prometheus Planning Phase
 
-Spawn Prometheus to create the initial plan:
+```
+[RALPH-PLAN Iteration 1/5] Prometheus creating plan...
+```
+
+Spawn Prometheus in **direct planning mode** (bypassing interview since task context is pre-gathered):
 
 ```
 Task(subagent_type="oh-my-claude-sisyphus:prometheus", prompt="
-CONTEXT: [User's task description]
+RALPH-PLAN DIRECT MODE - Create work plan immediately.
 
-Create a comprehensive work plan following your standard process:
-1. Ask clarifying questions if needed
-2. Research the codebase
-3. Consult with Metis for gaps
-4. Generate plan to .sisyphus/plans/[feature-name].md
+TASK CONTEXT: [User's task description from $ARGUMENTS]
 
-Signal when plan is ready by stating: 'PLAN_READY: .sisyphus/plans/[filename].md'
+You are being invoked by ralph-plan in direct mode. This means:
+1. The user has already provided the task context above
+2. Skip the interview phase - context is already gathered
+3. Consult with Metis for gaps (MANDATORY)
+4. Generate plan directly to .sisyphus/plans/[feature-name].md
+
+PLAN REQUIREMENTS:
+- Clear requirements summary
+- Concrete acceptance criteria
+- Specific implementation steps with file references
+- Risk identification and mitigations
+- Verification steps
+
+Signal completion: 'PLAN_READY: .sisyphus/plans/[filename].md'
 ")
 ```
 
-### Step 3: Oracle Consultation (If Questions Exist)
+Update state: `plan_path: [generated path]`
 
-If Prometheus or Momus raise questions that need strategic input:
+### Step 3: Oracle Consultation (Conditional)
+
+Oracle is invoked in TWO scenarios:
+1. **After Prometheus**: If Prometheus raises architectural questions needing strategic input
+2. **After Momus rejection**: If Momus identifies questions that need expert guidance
+
+```
+[RALPH-PLAN Iteration 1/5] Oracle consultation requested...
+```
+
+When invoked, give Oracle **file paths to read**, not summaries:
 
 ```
 Task(subagent_type="oh-my-claude-sisyphus:oracle", prompt="
-CONTEXT: Planning iteration for [feature]
+RALPH-PLAN ORACLE CONSULTATION
 
-QUESTIONS FROM PLANNING TRIAD:
-[List questions from Prometheus or Momus]
+PLAN FILE: .sisyphus/plans/[filename].md
+CODEBASE ROOT: [working directory]
 
-PLAN SO FAR:
-[Current plan content or summary]
+QUESTIONS REQUIRING STRATEGIC GUIDANCE:
+[List specific questions from Prometheus or Momus]
 
-Provide strategic guidance on these questions. Consider:
-- Architecture implications
-- Trade-offs
-- Best practices for this codebase
-- Risk assessment
+Your task:
+1. Read the plan file above
+2. Explore relevant codebase files as needed
+3. Provide strategic guidance on the questions
 
-Format your answers clearly so Prometheus can incorporate them.
+Format answers using ORACLE_ANSWER protocol (see below).
 ")
 ```
 
+Update state: `current_phase: "oracle_consultation"`
+
 ### Step 4: Momus Review
 
-After Prometheus completes a plan draft:
+```
+[RALPH-PLAN Iteration 1/5] Momus reviewing plan...
+```
+
+Momus receives only the file path (per its design):
 
 ```
 Task(subagent_type="oh-my-claude-sisyphus:momus", prompt="
@@ -115,27 +171,20 @@ Task(subagent_type="oh-my-claude-sisyphus:momus", prompt="
 ")
 ```
 
-### Step 5: Handle Momus Verdict
+Update state: `current_phase: "momus_review"`
+
+### Step 5: Handle Verdict and Complete
 
 ```
-IF verdict == "OKAY":
-    → Plan approved! Output completion signal.
-
-IF verdict == "REJECT":
-    → Extract Momus feedback
-    → Increment iteration_count
-    → IF iteration_count >= max_iterations:
-        → Force approval with warnings
-    → ELSE:
-        → Feed Momus feedback back to Prometheus
-        → Return to Step 2
+[RALPH-PLAN Iteration 1/5] Processing Momus verdict...
 ```
 
-### Step 6: Completion
+Update state: `current_phase: "handling_verdict"`
 
-When Momus approves (OKAY), output:
-
+**IF verdict == "OKAY":**
 ```
+[RALPH-PLAN] APPROVED after [N] iterations
+
 <ralph-plan-complete>
 PLAN APPROVED BY ALL AGENTS
 
@@ -150,24 +199,52 @@ Or manual execution with:
 </ralph-plan-complete>
 ```
 
+Update state: `active: false, current_phase: "complete"`
+
+**IF verdict == "REJECT":**
+```
+[RALPH-PLAN Iteration 1/5] REJECTED - [N] issues found
+
+Extract Momus feedback...
+Increment iteration to [N+1]
+```
+
+- Increment `iteration` in state
+- IF `iteration >= max_iterations`:
+  ```
+  [RALPH-PLAN] Max iterations (5) reached. Forcing approval with warnings.
+
+  WARNING: Plan approved by force after 5 iterations.
+  Momus's final concerns:
+  [List unresolved issues]
+
+  Proceed with caution. Consider manual review before execution.
+  ```
+- ELSE:
+  - Feed Momus feedback back to Prometheus
+  - Return to Step 2
+
 ## Iteration Rules
 
 | Rule | Description |
 |------|-------------|
 | **Max 5 iterations** | Safety limit to prevent infinite loops |
 | **Prometheus owns the plan** | Only Prometheus writes to the plan file |
-| **Oracle provides wisdom** | Oracle never modifies, only advises |
+| **Oracle provides wisdom** | Oracle reads and advises, never modifies |
 | **Momus has final say** | Plan is not done until Momus says OKAY |
 | **Feedback is specific** | Each rejection must include actionable items |
+| **State is persistent** | Progress survives session interruptions |
 
 ## Quality Gates
 
-Before each Momus review, verify:
+Before each Momus review, the orchestrator verifies:
 
-- [ ] Plan file exists at expected path
-- [ ] All file references in plan are valid
-- [ ] Acceptance criteria are testable
+- [ ] Plan file exists at `plan_path` in state
+- [ ] All file references in plan point to existing files
+- [ ] Acceptance criteria are concrete and testable
 - [ ] No vague language ("improve", "optimize" without metrics)
+
+If gates fail, return to Prometheus with specific feedback.
 
 ## Agent Communication Protocol
 
@@ -176,6 +253,7 @@ Before each Momus review, verify:
 ORACLE_QUESTION:
 - Topic: [Architecture/Performance/Security/Pattern]
 - Context: [What we're planning]
+- Files to examine: [specific paths]
 - Specific Question: [What we need answered]
 ```
 
@@ -183,9 +261,10 @@ ORACLE_QUESTION:
 ```
 ORACLE_ANSWER:
 - Topic: [Matching topic]
+- Analysis: [What Oracle found after reading files]
 - Recommendation: [Specific guidance]
 - Trade-offs: [What to consider]
-- References: [file:line citations]
+- References: [file:line citations from codebase]
 ```
 
 ### Momus → Prometheus Feedback
@@ -197,13 +276,22 @@ MOMUS_FEEDBACK:
   2. [Issue with specific fix required]
 - Minor Issues:
   1. [Nice to fix]
+- Questions for Oracle (if any):
+  1. [Architectural question needing expert input]
 ```
+
+## Cancellation
+
+To cancel ralph-plan:
+- Use `/cancel-ralph` (detects ralph-plan via state file)
+- Or manually delete `.sisyphus/ralph-plan-state.json`
 
 ## Begin Now
 
-1. **Parse the task from $ARGUMENTS**
-2. **Spawn Prometheus** with the task context
-3. **Iterate** through the planning loop
-4. **Complete** when Momus approves
+1. **Initialize state** and log: `[RALPH-PLAN Iteration 0/5] Initializing...`
+2. **Parse the task** from $ARGUMENTS
+3. **Spawn Prometheus** in direct planning mode
+4. **Iterate** through the planning loop with observability logging
+5. **Complete** when Momus approves (or max iterations with warning)
 
 The loop will refine the plan until it meets the rigorous standards of all three agents.
