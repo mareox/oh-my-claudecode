@@ -9,7 +9,7 @@ import { bold, dim } from './colors.js';
 import { renderRalph } from './elements/ralph.js';
 import { renderAgentsByFormat, renderAgentsMultiLine } from './elements/agents.js';
 import { renderTodos } from './elements/todos.js';
-import { renderSkills } from './elements/skills.js';
+import { renderSkills, renderLastSkill } from './elements/skills.js';
 import { renderContext } from './elements/context.js';
 import { renderBackground } from './elements/background.js';
 import { renderPrd } from './elements/prd.js';
@@ -39,10 +39,20 @@ export function render(context: HudRenderContext, config: HudConfig): string {
     if (prd) elements.push(prd);
   }
 
-  // Active skills (ultrawork, etc.)
+  // Active skills (ultrawork, etc.) + last skill
   if (enabledElements.activeSkills) {
-    const skills = renderSkills(context.ultrawork, context.ralph);
+    const skills = renderSkills(
+      context.ultrawork,
+      context.ralph,
+      (enabledElements.lastSkill ?? true) ? context.lastSkill : null
+    );
     if (skills) elements.push(skills);
+  }
+
+  // Standalone last skill element (if activeSkills disabled but lastSkill enabled)
+  if ((enabledElements.lastSkill ?? true) && !enabledElements.activeSkills) {
+    const lastSkillElement = renderLastSkill(context.lastSkill);
+    if (lastSkillElement) elements.push(lastSkillElement);
   }
 
   // Context window

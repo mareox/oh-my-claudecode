@@ -59,6 +59,7 @@ async function main(): Promise<void> {
       todos: transcriptData.todos,
       backgroundTasks: getRunningTasks(hudState),
       cwd,
+      lastSkill: transcriptData.lastActivatedSkill || null,
     };
 
     // Render and output

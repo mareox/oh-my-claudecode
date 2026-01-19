@@ -7,7 +7,7 @@
 
 import { createReadStream, existsSync } from 'fs';
 import { createInterface } from 'readline';
-import type { TranscriptData, ActiveAgent, TodoItem } from './types.js';
+import type { TranscriptData, ActiveAgent, TodoItem, SkillInvocation } from './types.js';
 
 /**
  * Parse a Claude Code transcript JSONL file.
@@ -19,6 +19,7 @@ export async function parseTranscript(
   const result: TranscriptData = {
     agents: [],
     todos: [],
+    lastActivatedSkill: undefined,
   };
 
   if (!transcriptPath || !existsSync(transcriptPath)) {
@@ -102,6 +103,16 @@ function processEntry(
             }))
           );
         }
+      } else if (block.name === 'Skill' || block.name === 'proxy_Skill') {
+        // Track last activated skill
+        const input = block.input as SkillInput | undefined;
+        if (input?.skill) {
+          result.lastActivatedSkill = {
+            name: input.skill,
+            args: input.args,
+            timestamp: timestamp,
+          };
+        }
       }
     }
 
@@ -164,6 +175,11 @@ interface TodoWriteInput {
     status: string;
     activeForm?: string;
   }>;
+}
+
+interface SkillInput {
+  skill: string;
+  args?: string;
 }
 
 // ============================================================================

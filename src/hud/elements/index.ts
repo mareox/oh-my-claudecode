@@ -7,7 +7,7 @@
 export { renderRalph } from './ralph.js';
 export { renderAgents } from './agents.js';
 export { renderTodos } from './todos.js';
-export { renderSkills } from './skills.js';
+export { renderSkills, renderLastSkill } from './skills.js';
 export { renderContext } from './context.js';
 export { renderBackground } from './background.js';
 export { renderPrd } from './prd.js';

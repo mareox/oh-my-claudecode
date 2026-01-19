@@ -56,7 +56,7 @@ Shows only the essentials:
 ### Focused (Default)
 Shows all relevant elements:
 ```
-[SISYPHUS] ralph:3/10 | US-002 | ultrawork | ctx:67% | agents:2 | bg:3/5 | todos:2/5
+[SISYPHUS] ralph:3/10 | US-002 | ultrawork skill:prometheus | ctx:67% | agents:2 | bg:3/5 | todos:2/5
 ```
 
 ### Full
@@ -83,7 +83,8 @@ When agents are running, the HUD shows detailed information on separate lines:
 | `[SISYPHUS]` | Mode identifier |
 | `ralph:3/10` | Ralph loop iteration/max |
 | `US-002` | Current PRD story ID |
-| `ultrawork` | Active skill badge |
+| `ultrawork` | Active mode badge |
+| `skill:name` | Last activated skill (cyan) |
 | `ctx:67%` | Context window usage |
 | `agents:2` | Running subagent count |
 | `bg:3/5` | Background task slots |
@@ -111,6 +112,7 @@ You can manually edit the config file:
     "ralph": true,
     "prdStory": true,
     "activeSkills": true,
+    "lastSkill": true,
     "contextBar": true,
     "agents": true,
     "backgroundTasks": true,

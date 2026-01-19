@@ -4,44 +4,75 @@
  * Renders active skills badge (ultrawork, ralph mode indicators).
  */
 
-import type { UltraworkStateForHud, RalphStateForHud } from '../types.js';
-import { RESET } from '../colors.js';
+import type { UltraworkStateForHud, RalphStateForHud, SkillInvocation } from '../types.js';
+import { RESET, cyan } from '../colors.js';
 
 const MAGENTA = '\x1b[35m';
 const BRIGHT_MAGENTA = '\x1b[95m';
 
 /**
- * Render active skill badges.
+ * Truncate string to max length with ellipsis.
+ */
+function truncate(str: string, max: number): string {
+  return str.length > max ? str.slice(0, max) + '...' : str;
+}
+
+/**
+ * Check if a skill name corresponds to an active mode.
+ */
+function isActiveMode(
+  skillName: string,
+  ultrawork: UltraworkStateForHud | null,
+  ralph: RalphStateForHud | null
+): boolean {
+  if (skillName === 'ultrawork' && ultrawork?.active) return true;
+  if (skillName === 'ralph-loop' && ralph?.active) return true;
+  if (skillName === 'ultrawork-ralph' && ultrawork?.active && ralph?.active) return true;
+  return false;
+}
+
+/**
+ * Render active skill badges with optional last skill.
  * Returns null if no skills are active.
  *
- * Format: ultrawork or ultrawork-ralph
+ * Format: ultrawork or ultrawork-ralph | skill:prometheus
  */
 export function renderSkills(
   ultrawork: UltraworkStateForHud | null,
-  ralph: RalphStateForHud | null
+  ralph: RalphStateForHud | null,
+  lastSkill?: SkillInvocation | null
 ): string | null {
-  const skills: string[] = [];
+  const parts: string[] = [];
 
-  // Check ultrawork
-  if (ultrawork?.active) {
-    skills.push('ultrawork');
-  }
-
-  // Check ralph (but don't duplicate if both active as "ultrawork-ralph")
+  // Active modes (ultrawork, ralph)
   if (ralph?.active && ultrawork?.active) {
     // Combined mode
-    return `${BRIGHT_MAGENTA}ultrawork-ralph${RESET}`;
+    parts.push(`${BRIGHT_MAGENTA}ultrawork-ralph${RESET}`);
+  } else if (ultrawork?.active) {
+    parts.push(`${MAGENTA}ultrawork${RESET}`);
+  } else if (ralph?.active) {
+    parts.push(`${MAGENTA}ralph${RESET}`);
   }
 
-  if (ultrawork?.active) {
-    return `${MAGENTA}ultrawork${RESET}`;
+  // Last skill (if different from active mode)
+  if (lastSkill && !isActiveMode(lastSkill.name, ultrawork, ralph)) {
+    const argsDisplay = lastSkill.args ? `(${truncate(lastSkill.args, 15)})` : '';
+    parts.push(cyan(`skill:${lastSkill.name}${argsDisplay}`));
   }
 
-  if (ralph?.active) {
-    return `${MAGENTA}ralph${RESET}`;
-  }
+  return parts.length > 0 ? parts.join(' ') : null;
+}
 
-  return null;
+/**
+ * Render last skill standalone (when activeSkills is disabled but lastSkill is enabled).
+ */
+export function renderLastSkill(
+  lastSkill: SkillInvocation | null
+): string | null {
+  if (!lastSkill) return null;
+
+  const argsDisplay = lastSkill.args ? `(${truncate(lastSkill.args, 15)})` : '';
+  return cyan(`skill:${lastSkill.name}${argsDisplay}`);
 }
 
 /**

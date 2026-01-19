@@ -71,10 +71,17 @@ export interface ActiveAgent {
   endTime?: Date;
 }
 
+export interface SkillInvocation {
+  name: string;
+  args?: string;
+  timestamp: Date;
+}
+
 export interface TranscriptData {
   agents: ActiveAgent[];
   todos: TodoItem[];
   sessionStart?: Date;
+  lastActivatedSkill?: SkillInvocation;
 }
 
 // ============================================================================
@@ -131,6 +138,9 @@ export interface HudRenderContext {
 
   /** Working directory */
   cwd: string;
+
+  /** Last activated skill from transcript */
+  lastSkill: SkillInvocation | null;
 }
 
 // ============================================================================
@@ -156,6 +166,7 @@ export interface HudElementConfig {
   ralph: boolean;
   prdStory: boolean;
   activeSkills: boolean;
+  lastSkill: boolean;
   contextBar: boolean;
   agents: boolean;
   agentsFormat: AgentsFormat;
@@ -192,6 +203,7 @@ export const DEFAULT_HUD_CONFIG: HudConfig = {
     agentsMaxLines: 5, // Show up to 5 agent detail lines
     backgroundTasks: true,
     todos: true,
+    lastSkill: true,
   },
   thresholds: {
     contextWarning: 70,
@@ -206,6 +218,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     ralph: true,
     prdStory: false,
     activeSkills: true,
+    lastSkill: true,
     contextBar: false,
     agents: true,
     agentsFormat: 'count', // Just count for minimal mode
@@ -218,6 +231,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     ralph: true,
     prdStory: true,
     activeSkills: true,
+    lastSkill: true,
     contextBar: true,
     agents: true,
     agentsFormat: 'multiline', // Multi-line for rich visualization
@@ -230,6 +244,7 @@ export const PRESET_CONFIGS: Record<HudPreset, Partial<HudElementConfig>> = {
     ralph: true,
     prdStory: true,
     activeSkills: true,
+    lastSkill: true,
     contextBar: true,
     agents: true,
     agentsFormat: 'multiline', // Multi-line with more details
