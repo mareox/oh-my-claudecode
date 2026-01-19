@@ -2014,14 +2014,58 @@ Use qa-tester ONLY when ALL of these apply:
 Begin working on the task now. The loop will not release you until you earn your \`<promise>TASK_COMPLETE</promise>\`.`,
 
   'cancel-ralph.md': `---
-description: Cancel active Ralph Loop
+description: Cancel active Ralph Loop (and ultrawork-ralph if active)
 ---
 
 [RALPH LOOP CANCELLED]
 
-The Ralph Loop has been cancelled. You can stop working on the current task.
+The Ralph Loop has been cancelled. You MUST now deactivate the state files.
 
-If you want to start a new loop, use \`/ralph-loop "task description"\`.`,
+## MANDATORY ACTION
+
+Execute this command to fully cancel ALL persistent modes:
+
+\`\`\`bash
+mkdir -p .sisyphus ~/.claude && \\
+echo '{"active": false, "cancelled_at": "'\$(date -Iseconds)'", "reason": "User cancelled via /cancel-ralph"}' > .sisyphus/ralph-state.json && \\
+echo '{"active": false, "cancelled_at": "'\$(date -Iseconds)'", "reason": "User cancelled via /cancel-ralph"}' > .sisyphus/ultrawork-state.json && \\
+echo '{"active": false, "cancelled_at": "'\$(date -Iseconds)'", "reason": "User cancelled via /cancel-ralph"}' > ~/.claude/ralph-state.json && \\
+echo '{"active": false, "cancelled_at": "'\$(date -Iseconds)'", "reason": "User cancelled via /cancel-ralph"}' > ~/.claude/ultrawork-state.json && \\
+rm -f .sisyphus/ralph-verification.json
+\`\`\`
+
+After running this command, you are free to stop working.
+
+## To Start Fresh
+
+- \`/ralph-loop "task"\` - Start ralph loop only
+- \`/ultrawork "task"\` - Start ultrawork only
+- \`/ultrawork-ralph "task"\` - Start combined mode`,
+
+  'cancel-ultrawork.md': `---
+description: Cancel active Ultrawork mode
+---
+
+[ULTRAWORK CANCELLED]
+
+The Ultrawork mode has been cancelled. Clearing state files.
+
+## MANDATORY ACTION
+
+Execute this command to cancel Ultrawork:
+
+\`\`\`bash
+mkdir -p .sisyphus && \\
+echo '{"active": false, "cancelled_at": "'\$(date -Iseconds)'", "reason": "User cancelled via /cancel-ultrawork"}' > .sisyphus/ultrawork-state.json && \\
+echo '{"active": false, "cancelled_at": "'\$(date -Iseconds)'", "reason": "User cancelled via /cancel-ultrawork"}' > ~/.claude/ultrawork-state.json
+\`\`\`
+
+After running this command, ultrawork mode will be deactivated.
+
+## To Start Fresh
+
+- \`/ultrawork "task"\` - Start ultrawork only
+- \`/ultrawork-ralph "task"\` - Start combined mode`,
 
   'ultrawork-ralph.md': `---
 description: Maximum intensity mode with completion guarantee - ultrawork + ralph loop combined
@@ -2947,24 +2991,50 @@ export function install(options: InstallOptions = {}): InstallResult {
       }
 
       // Build the HUD script content (compiled from src/hud/index.ts)
-      // For now, we create a wrapper that uses the installed package
+      // Create a wrapper that checks multiple locations for the HUD module
       const hudScriptPath = join(HUD_DIR, 'sisyphus-hud.mjs');
       const hudScriptLines = [
         '#!/usr/bin/env node',
         '/**',
         ' * Sisyphus HUD - Statusline Script',
-        ' * Wrapper that imports from the installed oh-my-claude-sisyphus package',
+        ' * Wrapper that imports from installed or development locations',
         ' */',
         '',
-        '// Dynamic import - try installed location first, then fallback',
+        'import { existsSync } from "node:fs";',
+        'import { homedir } from "node:os";',
+        'import { join } from "node:path";',
+        '',
+        '// Check development paths first, then npm package',
         'async function main() {',
-        '  try {',
-        '    // Try direct import (works if globally installed)',
-        '    await import("oh-my-claude-sisyphus/dist/hud/index.js");',
-        '  } catch {',
-        '    // Fallback: just output minimal HUD',
-        '    console.log("[SISYPHUS] active");',
+        '  const home = homedir();',
+        '  ',
+        '  // Common development locations to check',
+        '  const devPaths = [',
+        '    join(home, "Workspace/oh-my-claude-sisyphus/dist/hud/index.js"),',
+        '    join(home, "workspace/oh-my-claude-sisyphus/dist/hud/index.js"),',
+        '    join(home, "projects/oh-my-claude-sisyphus/dist/hud/index.js"),',
+        '    join(home, "dev/oh-my-claude-sisyphus/dist/hud/index.js"),',
+        '    join(home, "code/oh-my-claude-sisyphus/dist/hud/index.js"),',
+        '  ];',
+        '  ',
+        '  // Try development paths first',
+        '  for (const devPath of devPaths) {',
+        '    if (existsSync(devPath)) {',
+        '      try {',
+        '        await import(devPath);',
+        '        return;',
+        '      } catch { /* continue to next */ }',
+        '    }',
         '  }',
+        '  ',
+        '  // Try npm package (global or local install)',
+        '  try {',
+        '    await import("oh-my-claude-sisyphus/dist/hud/index.js");',
+        '    return;',
+        '  } catch { /* continue to fallback */ }',
+        '  ',
+        '  // Fallback: minimal HUD',
+        '  console.log("[SISYPHUS] active");',
         '}',
         '',
         'main();',
