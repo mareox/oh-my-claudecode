@@ -41,24 +41,14 @@ echo "Downloaded CLAUDE.md to ~/.claude/CLAUDE.md"
 
 ## Step 3: Setup HUD Statusline
 
-The HUD shows real-time status in Claude Code's status bar. Install it by running the plugin setup script:
+The HUD shows real-time status in Claude Code's status bar. **Invoke the hud skill** to set up and configure:
 
-```bash
-# Find and run plugin-setup.mjs to install HUD
-PLUGIN_SETUP=$(find ~/.claude/plugins/cache/oh-my-claudecode -name "plugin-setup.mjs" 2>/dev/null | head -1)
-if [ -z "$PLUGIN_SETUP" ]; then
-  # Try common dev paths
-  for p in ~/Workspace/oh-my-claudecode ~/Workspace/oh-my-claude-sisyphus ~/workspace/oh-my-claudecode ~/projects/oh-my-claudecode; do
-    if [ -f "$p/scripts/plugin-setup.mjs" ]; then PLUGIN_SETUP="$p/scripts/plugin-setup.mjs"; break; fi
-  done
-fi
-if [ -n "$PLUGIN_SETUP" ]; then
-  node "$PLUGIN_SETUP"
-  echo "HUD statusline installed"
-else
-  echo "Note: HUD setup script not found - HUD will work after plugin update"
-fi
-```
+Use the Skill tool to invoke: `hud` with args: `setup`
+
+This will:
+1. Install the HUD wrapper script to `~/.claude/hud/omc-hud.mjs`
+2. Configure `statusLine` in `~/.claude/settings.json`
+3. Report status and prompt to restart if needed
 
 ## Step 4: Verify Plugin Installation
 
