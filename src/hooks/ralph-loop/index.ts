@@ -63,6 +63,21 @@ export interface RalphLoopState {
   prd_mode?: boolean;
   /** Current story being worked on */
   current_story_id?: string;
+  /** Whether ultrawork is linked/auto-activated with ralph */
+  linked_ultrawork?: boolean;
+}
+
+export interface UltraworkState {
+  /** Whether ultrawork is currently active */
+  active: boolean;
+  /** Reinforcement count for persistence */
+  reinforcement_count: number;
+  /** Original prompt/task */
+  original_prompt: string;
+  /** When started */
+  started_at: string;
+  /** Whether linked to ralph (auto-activated) */
+  linked_to_ralph?: boolean;
 }
 
 export interface RalphLoopOptions {
@@ -70,6 +85,8 @@ export interface RalphLoopOptions {
   maxIterations?: number;
   /** Custom completion promise (default: "TASK_COMPLETE") */
   completionPromise?: string;
+  /** Disable auto-activation of ultrawork (default: false - ultrawork is enabled) */
+  disableUltrawork?: boolean;
 }
 
 export interface RalphLoopHook {
@@ -141,6 +158,66 @@ export function clearRalphState(directory: string): boolean {
     return true;
   }
 
+  try {
+    unlinkSync(stateFile);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Get ultrawork state file path
+ */
+function getUltraworkStateFilePath(directory: string): string {
+  const omcDir = join(directory, '.omc');
+  return join(omcDir, 'ultrawork-state.json');
+}
+
+/**
+ * Write ultrawork state to disk
+ */
+export function writeUltraworkState(directory: string, state: UltraworkState): boolean {
+  try {
+    ensureStateDir(directory);
+    const stateFile = getUltraworkStateFilePath(directory);
+    writeFileSync(stateFile, JSON.stringify(state, null, 2));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Read ultrawork state from disk
+ */
+export function readUltraworkState(directory: string): UltraworkState | null {
+  const stateFile = getUltraworkStateFilePath(directory);
+
+  if (!existsSync(stateFile)) {
+    return null;
+  }
+
+  try {
+    const content = readFileSync(stateFile, 'utf-8');
+    return JSON.parse(content);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clear ultrawork state (only if linked to ralph)
+ */
+export function clearLinkedUltraworkState(directory: string): boolean {
+  const state = readUltraworkState(directory);
+
+  // Only clear if it was linked to ralph (auto-activated)
+  if (!state || !state.linked_to_ralph) {
+    return true;
+  }
+
+  const stateFile = getUltraworkStateFilePath(directory);
   try {
     unlinkSync(stateFile);
     return true;
@@ -222,17 +299,35 @@ export function createRalphLoopHook(directory: string): RalphLoopHook {
       return false;
     }
 
+    const enableUltrawork = !options?.disableUltrawork;
+    const now = new Date().toISOString();
+
     const state: RalphLoopState = {
       active: true,
       iteration: 1,
       max_iterations: options?.maxIterations ?? DEFAULT_MAX_ITERATIONS,
       completion_promise: options?.completionPromise ?? DEFAULT_COMPLETION_PROMISE,
-      started_at: new Date().toISOString(),
+      started_at: now,
       prompt,
-      session_id: sessionId
+      session_id: sessionId,
+      linked_ultrawork: enableUltrawork
     };
 
-    return writeRalphState(directory, state);
+    const ralphSuccess = writeRalphState(directory, state);
+
+    // Auto-activate ultrawork (linked to ralph) by default
+    if (ralphSuccess && enableUltrawork) {
+      const ultraworkState: UltraworkState = {
+        active: true,
+        reinforcement_count: 0,
+        original_prompt: prompt,
+        started_at: now,
+        linked_to_ralph: true
+      };
+      writeUltraworkState(directory, ultraworkState);
+    }
+
+    return ralphSuccess;
   };
 
   const cancelLoop = (sessionId: string): boolean => {
@@ -240,6 +335,11 @@ export function createRalphLoopHook(directory: string): RalphLoopHook {
 
     if (!state || state.session_id !== sessionId) {
       return false;
+    }
+
+    // Also clear linked ultrawork state if it was auto-activated
+    if (state.linked_ultrawork) {
+      clearLinkedUltraworkState(directory);
     }
 
     return clearRalphState(directory);

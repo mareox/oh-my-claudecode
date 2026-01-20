@@ -1,6 +1,7 @@
 ---
 name: orchestrate
 description: Activate multi-agent orchestration mode
+user-invocable: true
 ---
 
 # Orchestrate Skill
@@ -95,7 +96,7 @@ Ask yourself:
    - NO → Continue to step 4
 
 4. **Is this documentation/writing task?**
-   - YES → Agent: `document-writer`
+   - YES → Agent: `writer`
    - NO → Continue to step 5
 
 5. **Is this exploration/search task?**

@@ -108,9 +108,20 @@ EOF
       NEW_ITER=$((ITERATION + 1))
       echo "$RALPH_STATE" | jq ".iteration = $NEW_ITER" > "$DIRECTORY/.omc/ralph-state.json" 2>/dev/null
 
-      cat << EOF
+      # Check if ultrawork is linked (auto-activated with ralph)
+      LINKED_ULTRAWORK=$(echo "$RALPH_STATE" | jq -r '.linked_ultrawork // false' 2>/dev/null)
+
+      if [ "$LINKED_ULTRAWORK" = "true" ]; then
+        # Combined ralph+ultrawork message with parallel execution rules
+        cat << EOF
+{"continue": false, "reason": "<ralph-ultrawork-continuation>\n\n[RALPH + ULTRAWORK - ITERATION $NEW_ITER/$MAX_ITER]\n\nYour previous attempt did not output the completion promise. The work is NOT done yet.\n\n## ULTRAWORK RULES (ACTIVE)\n- **PARALLEL**: Fire independent calls simultaneously - NEVER wait sequentially\n- **BACKGROUND FIRST**: Use Task(run_in_background=true) for long operations\n- **DELEGATE**: Route tasks to specialist agents immediately\n- **SMART ROUTING**: Use haiku for lookups, sonnet for standard work, opus for complex analysis\n- **TODO**: Track EVERY step. Mark complete IMMEDIATELY.\n\n## COMPLETION REQUIREMENTS\n1. Review your progress and the original task\n2. Check your todo list - are ALL items marked complete?\n3. Continue from where you left off using PARALLEL execution\n4. Get Architect verification when ready\n5. When FULLY complete AND verified, output: <promise>$PROMISE</promise>\n6. Do NOT stop until the task is truly done\n\nOriginal task: $PROMPT\n\n</ralph-ultrawork-continuation>\n\n---\n"}
+EOF
+      else
+        # Standard ralph-only message
+        cat << EOF
 {"continue": false, "reason": "<ralph-loop-continuation>\n\n[RALPH LOOP - ITERATION $NEW_ITER/$MAX_ITER]\n\nYour previous attempt did not output the completion promise. The work is NOT done yet.\n\nCRITICAL INSTRUCTIONS:\n1. Review your progress and the original task\n2. Check your todo list - are ALL items marked complete?\n3. Continue from where you left off\n4. When FULLY complete, output: <promise>$PROMISE</promise>\n5. Do NOT stop until the task is truly done\n\nOriginal task: $PROMPT\n\n</ralph-loop-continuation>\n\n---\n"}
 EOF
+      fi
       exit 0
     fi
   fi

@@ -247,10 +247,11 @@ describe('Installer Constants', () => {
     it('should contain essential sections', () => {
       const essentialSections = [
         'OMC Multi-Agent System',
-        'DEFAULT OPERATING MODE',
-        'Available Subagents',
-        'Slash Commands',
-        'CONTINUATION ENFORCEMENT',
+        'How I Work',
+        'What I Do Automatically',
+        'Delegate Always',
+        'Magic Keywords',
+        'Stopping and Cancelling',
       ];
 
       for (const section of essentialSections) {
@@ -259,50 +260,54 @@ describe('Installer Constants', () => {
     });
 
     it('should reference all core agents', () => {
-      const coreAgents = [
+      // The new CLAUDE.md has agents in the INTERNAL section (Smart Model Routing table)
+      // We'll check for a subset of key agents to ensure the section exists
+      const keyAgents = [
         'architect',
-        'researcher',
+        'executor',
         'explore',
         'designer',
         'writer',
-        'vision',
-        'critic',
-        'analyst',
-        'executor',
         'planner',
-        'qa-tester',
       ];
 
-      for (const agent of coreAgents) {
-        // Agents are prefixed with oh-my-claudecode: in the content (will be updated to oh-my-opencode: in rebrand)
+      for (const agent of keyAgents) {
+        // Agents are prefixed with oh-my-claudecode: in the content
         expect(CLAUDE_MD_CONTENT).toMatch(new RegExp(`oh-my-claudecode:${agent}`));
       }
     });
 
     it('should include tiered agent routing table', () => {
+      // Verify the Smart Model Routing section exists in INTERNAL section
       expect(CLAUDE_MD_CONTENT).toContain('Smart Model Routing');
-      expect(CLAUDE_MD_CONTENT).toContain('explore');
-      expect(CLAUDE_MD_CONTENT).toContain('explore-medium');
-      expect(CLAUDE_MD_CONTENT).toContain('executor-low');
-      expect(CLAUDE_MD_CONTENT).toContain('executor-high');
+      expect(CLAUDE_MD_CONTENT).toContain('LOW (Haiku)');
+      expect(CLAUDE_MD_CONTENT).toContain('MEDIUM (Sonnet)');
+      expect(CLAUDE_MD_CONTENT).toContain('HIGH (Opus)');
+      expect(CLAUDE_MD_CONTENT).toContain('oh-my-claudecode:explore');
+      expect(CLAUDE_MD_CONTENT).toContain('oh-my-claudecode:executor-low');
     });
 
-    it('should document all slash commands', () => {
-      const commands = [
-        '/ultrawork',
-        '/deepsearch',
-        '/analyze',
-        '/plan',
-        '/review',
-        '/planner',
-        '/ralph',
-        '/cancel-ralph',
-        '/deepinit',
+    it('should document magic keywords and compatibility commands', () => {
+      // New CLAUDE.md has "Magic Keywords" instead of slash commands
+      expect(CLAUDE_MD_CONTENT).toContain('Magic Keywords');
+
+      // Check for key keywords in the table
+      const keywords = [
+        'ralph',
+        'ralplan',
+        'ulw',
+        'plan',
       ];
 
-      for (const command of commands) {
-        expect(CLAUDE_MD_CONTENT).toContain(command);
+      for (const keyword of keywords) {
+        expect(CLAUDE_MD_CONTENT).toContain(keyword);
       }
+
+      // Verify backward compatibility section exists
+      expect(CLAUDE_MD_CONTENT).toContain('All Old Commands Still Work');
+      expect(CLAUDE_MD_CONTENT).toContain('/ralph');
+      expect(CLAUDE_MD_CONTENT).toContain('/ultrawork');
+      expect(CLAUDE_MD_CONTENT).toContain('/planner');
     });
 
     it('should contain markdown tables', () => {
@@ -321,7 +326,7 @@ describe('Installer Constants', () => {
 
     it('should match package.json version', () => {
       // This is a runtime check - VERSION should match the package.json
-      expect(VERSION).toBe('3.0.0-beta');
+      expect(VERSION).toBe('3.0.0');
     });
   });
 

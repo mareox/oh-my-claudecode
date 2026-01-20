@@ -1,15 +1,15 @@
 # Local Plugin Installation
 
-How to install oh-my-claude-sisyphus from a local development directory as a Claude Code plugin.
+How to install oh-my-claudecode from a local development directory as a Claude Code plugin.
 
 ## Quick Install
 
 ```bash
 # 1. Add local directory as a marketplace
-claude plugin marketplace add /path/to/oh-my-claude-sisyphus
+claude plugin marketplace add /path/to/oh-my-claudecode
 
 # 2. Install the plugin from the local marketplace
-claude plugin install oh-my-claude-sisyphus@oh-my-claude-sisyphus
+claude plugin install oh-my-claudecode@oh-my-claudecode
 
 # 3. Restart Claude Code to pick up the plugin
 ```
@@ -21,19 +21,19 @@ claude plugin install oh-my-claude-sisyphus@oh-my-claude-sisyphus
 claude plugin marketplace list
 
 # Update marketplace (re-read from source)
-claude plugin marketplace update oh-my-claude-sisyphus
+claude plugin marketplace update oh-my-claudecode
 
 # Update the installed plugin
-claude plugin update oh-my-claude-sisyphus@oh-my-claude-sisyphus
+claude plugin update oh-my-claudecode@oh-my-claudecode
 
 # List installed plugins
 claude plugin list
 
 # Uninstall
-claude plugin uninstall oh-my-claude-sisyphus@oh-my-claude-sisyphus
+claude plugin uninstall oh-my-claudecode@oh-my-claudecode
 
 # Remove marketplace
-claude plugin marketplace remove oh-my-claude-sisyphus
+claude plugin marketplace remove oh-my-claudecode
 ```
 
 ## Plugin Structure
@@ -42,7 +42,7 @@ The plugin requires a `plugin.json` manifest:
 
 ```json
 {
-  "name": "oh-my-claude-sisyphus",
+  "name": "oh-my-claudecode",
   "version": "3.0.0-beta",
   "description": "Multi-agent orchestration system for Claude Code",
   "hooks": {
@@ -65,10 +65,10 @@ After making changes to the plugin:
 npm run build
 
 # 2. Update the marketplace cache
-claude plugin marketplace update oh-my-claude-sisyphus
+claude plugin marketplace update oh-my-claudecode
 
 # 3. Update the installed plugin
-claude plugin update oh-my-claude-sisyphus@oh-my-claude-sisyphus
+claude plugin update oh-my-claudecode@oh-my-claudecode
 
 # 4. Restart Claude Code session
 ```

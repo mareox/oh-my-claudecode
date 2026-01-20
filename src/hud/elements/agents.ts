@@ -4,7 +4,7 @@
  * Renders active agent count display with multiple format options:
  * - count: agents:2
  * - codes: agents:Oes (type-coded with model tier casing)
- * - detailed: agents:[architect(2m),explore,sj]
+ * - detailed: agents:[architect(2m),explore,exec]
  */
 
 import type { ActiveAgent, AgentsFormat } from '../types.js';
@@ -21,25 +21,47 @@ const CYAN = '\x1b[36m';
  * Case indicates model tier: Uppercase = Opus, lowercase = Sonnet/Haiku
  */
 const AGENT_TYPE_CODES: Record<string, string> = {
-  architect: 'O',
-  'architect-low': 'o',
-  'architect-medium': 'o',
-  explore: 'E',
-  'explore-medium': 'e',
-  'executor': 'S',
-  'executor-low': 's',
-  'executor-high': 'S',
-  'designer': 'F',
-  'designer-low': 'f',
-  'designer-high': 'F',
-  researcher: 'L',
-  'researcher-low': 'l',
-  'writer': 'd', // Always haiku
-  planner: 'P', // Always opus
-  critic: 'M', // Always opus
-  analyst: 'T', // Me**t**is (M taken)
-  'qa-tester': 'q', // Always sonnet
-  'vision': 'v', // **V**isual (always sonnet)
+  // Architect variants - 'A' for Architect
+  architect: 'A',           // opus
+  'architect-medium': 'a',  // sonnet
+  'architect-low': 'a',     // haiku
+
+  // Researcher variants - 'R' for Researcher
+  researcher: 'r',          // sonnet
+  'researcher-low': 'r',    // haiku
+
+  // Explore variants - 'E' for Explore
+  explore: 'e',             // haiku
+  'explore-medium': 'e',    // sonnet
+
+  // Designer variants - 'D' for Designer
+  designer: 'd',            // sonnet
+  'designer-low': 'd',      // haiku
+  'designer-high': 'D',     // opus
+
+  // Writer - 'W' for Writer
+  writer: 'w',              // haiku
+
+  // Vision - 'V' for Vision
+  vision: 'v',              // sonnet
+
+  // Critic - 'C' for Critic
+  critic: 'C',              // opus
+
+  // Analyst - 'T' for meTis (A taken by Architect)
+  analyst: 'T',             // opus
+
+  // Executor variants - 'X' for eXecutor
+  executor: 'x',            // sonnet
+  'executor-low': 'x',      // haiku
+  'executor-high': 'X',     // opus
+
+  // Planner - 'P' for Planner
+  planner: 'P',             // opus
+
+  // QA-Tester variants - 'Q' for QA
+  'qa-tester': 'q',         // sonnet
+  'qa-tester-high': 'Q',    // opus
 };
 
 /**
@@ -184,7 +206,7 @@ export function renderAgentsCodedWithDuration(agents: ActiveAgent[]): string | n
 /**
  * Render detailed agent list (for full mode).
  *
- * Format: agents:[architect(2m),explore,sj]
+ * Format: agents:[architect(2m),explore,exec]
  */
 export function renderAgentsDetailed(agents: ActiveAgent[]): string | null {
   const running = sortByFreshest(agents.filter((a) => a.status === 'running'));
@@ -201,15 +223,18 @@ export function renderAgentsDetailed(agents: ActiveAgent[]): string | null {
     const parts = a.type.split(':');
     let name = parts[parts.length - 1] || a.type;
 
-    // Abbreviate common names
-    if (name === 'executor') name = 'sj';
-    if (name === 'executor-low') name = 'sj-l';
-    if (name === 'executor-high') name = 'sj-h';
-    if (name === 'designer') name = 'fe';
-    if (name === 'designer-low') name = 'fe-l';
-    if (name === 'designer-high') name = 'fe-h';
-    if (name === 'writer') name = 'doc';
-    if (name === 'vision') name = 'visual';
+    // Abbreviate common names (aligned with current agent naming)
+    if (name === 'executor') name = 'exec';
+    if (name === 'executor-low') name = 'exec-l';
+    if (name === 'executor-high') name = 'exec-h';
+    if (name === 'designer') name = 'design';
+    if (name === 'designer-low') name = 'design-l';
+    if (name === 'designer-high') name = 'design-h';
+    if (name === 'qa-tester') name = 'qa';
+    if (name === 'qa-tester-high') name = 'qa-h';
+    if (name === 'architect-medium') name = 'arch-m';
+    if (name === 'architect-low') name = 'arch-l';
+    if (name === 'researcher-low') name = 'research-l';
 
     // Add duration if significant
     const durationMs = now - a.startTime.getTime();
@@ -237,20 +262,27 @@ function getShortAgentName(agentType: string): string {
   const parts = agentType.split(':');
   let name = parts[parts.length - 1] || agentType;
 
-  // Abbreviate common names
+  // Abbreviate common names (aligned with current agent naming)
   const abbrevs: Record<string, string> = {
-    'executor': 'sj',
-    'executor-low': 'sj',
-    'executor-high': 'sj',
-    'designer': 'fe',
-    'designer-low': 'fe',
-    'designer-high': 'fe',
-    'writer': 'doc',
-    'vision': 'visual',
-    'architect-low': 'architect',
-    'architect-medium': 'architect',
+    // Executor variants -> 'exec'
+    'executor': 'exec',
+    'executor-low': 'exec',
+    'executor-high': 'exec',
+    // Designer variants -> 'design'
+    'designer': 'design',
+    'designer-low': 'design',
+    'designer-high': 'design',
+    // Keep actual names for clarity
+    'writer': 'writer',
+    'vision': 'vision',
+    // Collapse tier variants to base name
+    'architect-low': 'arch',
+    'architect-medium': 'arch',
     'explore-medium': 'explore',
-    'researcher-low': 'lib',
+    'researcher-low': 'research',
+    // QA variants
+    'qa-tester': 'qa',
+    'qa-tester-high': 'qa',
   };
 
   return abbrevs[name] || name;
@@ -362,7 +394,7 @@ export interface MultiLineRenderResult {
  * Format:
  * ├─ O architect     2m   analyzing architecture patterns...
  * ├─ e explore    45s  searching for test files
- * └─ s sj-junior  1m   implementing validation logic
+ * └─ x exec       1m   implementing validation logic
  */
 export function renderAgentsMultiLine(
   agents: ActiveAgent[],

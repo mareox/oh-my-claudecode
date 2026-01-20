@@ -72,9 +72,9 @@ describe('Agents Element', () => {
         createAgent('oh-my-claudecode:architect', 'opus'),
       ];
       const result = renderAgentsCoded(agents);
-      // Architect with opus should be uppercase O in magenta
+      // Architect with opus should be uppercase A in magenta
       expect(result).toContain('agents:');
-      expect(result).toContain('O');
+      expect(result).toContain('A');
     });
 
     it('should use lowercase for sonnet/haiku tiers', () => {
@@ -94,13 +94,13 @@ describe('Agents Element', () => {
       const result = renderAgentsCoded(agents);
       expect(result).toBeDefined();
       // Should contain codes for all three
-      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:Oes');
+      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:Aex');
     });
 
     it('should handle agents without model info', () => {
       const agents: ActiveAgent[] = [createAgent('oh-my-claudecode:architect')];
       const result = renderAgentsCoded(agents);
-      expect(result).toContain('O');
+      expect(result).toContain('A');
     });
 
     it('should use first letter for unknown agent types', () => {
@@ -123,7 +123,7 @@ describe('Agents Element', () => {
       ];
       const result = renderAgentsCodedWithDuration(agents);
       // No duration suffix for <10s
-      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:O');
+      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:A');
     });
 
     it('should show seconds for agents running 10-59s', () => {
@@ -136,7 +136,7 @@ describe('Agents Element', () => {
       ];
       const result = renderAgentsCodedWithDuration(agents);
       const stripped = result!.replace(/\x1b\[[0-9;]*m/g, '');
-      expect(stripped).toMatch(/agents:O\(30s\)/);
+      expect(stripped).toMatch(/agents:A\(30s\)/);
     });
 
     it('should show minutes for agents running 1-9 min', () => {
@@ -149,7 +149,7 @@ describe('Agents Element', () => {
       ];
       const result = renderAgentsCodedWithDuration(agents);
       const stripped = result!.replace(/\x1b\[[0-9;]*m/g, '');
-      expect(stripped).toMatch(/agents:O\(3m\)/);
+      expect(stripped).toMatch(/agents:A\(3m\)/);
     });
 
     it('should show alert for agents running 10+ min', () => {
@@ -162,7 +162,7 @@ describe('Agents Element', () => {
       ];
       const result = renderAgentsCodedWithDuration(agents);
       const stripped = result!.replace(/\x1b\[[0-9;]*m/g, '');
-      expect(stripped).toMatch(/agents:O!/);
+      expect(stripped).toMatch(/agents:A!/);
     });
   });
 
@@ -182,7 +182,7 @@ describe('Agents Element', () => {
         createAgent('oh-my-claudecode:executor', 'sonnet'),
       ];
       const result = renderAgentsDetailed(agents);
-      expect(result).toContain('sj');
+      expect(result).toContain('exec');
     });
 
     it('should include duration for long-running agents', () => {
@@ -212,7 +212,7 @@ describe('Agents Element', () => {
     it('should route to codes format', () => {
       const result = renderAgentsByFormat(agents, 'codes');
       expect(result).toContain('agents:');
-      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:Oe');
+      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:Ae');
     });
 
     it('should route to codes-duration format', () => {
@@ -233,7 +233,7 @@ describe('Agents Element', () => {
         },
       ];
       const result = renderAgentsByFormat(agentsWithDesc, 'descriptions');
-      expect(result).toContain('O');
+      expect(result).toContain('A');
       expect(result).toContain('Analyzing code');
     });
 
@@ -247,33 +247,33 @@ describe('Agents Element', () => {
       const result = renderAgentsByFormat(agentsWithDesc, 'tasks');
       expect(result).toContain('[');
       expect(result).toContain('Analyzing code');
-      expect(result).not.toContain('O:'); // tasks format doesn't show codes
+      expect(result).not.toContain('A:'); // tasks format doesn't show codes
     });
 
     it('should default to codes for unknown format', () => {
       const result = renderAgentsByFormat(agents, 'unknown' as any);
       // Should fall back to codes format
       expect(result).toContain('agents:');
-      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:Oe');
+      expect(result!.replace(/\x1b\[[0-9;]*m/g, '')).toBe('agents:Ae');
     });
   });
 
   describe('Agent type codes', () => {
     const testCases = [
-      { type: 'architect', model: 'opus', expected: 'O' },
-      { type: 'architect-low', model: 'haiku', expected: 'o' },
-      { type: 'architect-medium', model: 'sonnet', expected: 'o' },
+      { type: 'architect', model: 'opus', expected: 'A' },
+      { type: 'architect-low', model: 'haiku', expected: 'a' },
+      { type: 'architect-medium', model: 'sonnet', expected: 'a' },
       { type: 'explore', model: 'haiku', expected: 'e' },
       { type: 'explore-medium', model: 'sonnet', expected: 'e' },
-      { type: 'executor', model: 'sonnet', expected: 's' },
-      { type: 'executor-low', model: 'haiku', expected: 's' },
-      { type: 'executor-high', model: 'opus', expected: 'S' },
-      { type: 'designer', model: 'sonnet', expected: 'f' },
-      { type: 'designer-high', model: 'opus', expected: 'F' },
-      { type: 'researcher', model: 'sonnet', expected: 'l' },
-      { type: 'writer', model: 'haiku', expected: 'd' },
+      { type: 'executor', model: 'sonnet', expected: 'x' },
+      { type: 'executor-low', model: 'haiku', expected: 'x' },
+      { type: 'executor-high', model: 'opus', expected: 'X' },
+      { type: 'designer', model: 'sonnet', expected: 'd' },
+      { type: 'designer-high', model: 'opus', expected: 'D' },
+      { type: 'researcher', model: 'sonnet', expected: 'r' },
+      { type: 'writer', model: 'haiku', expected: 'w' },
       { type: 'planner', model: 'opus', expected: 'P' },
-      { type: 'critic', model: 'opus', expected: 'M' },
+      { type: 'critic', model: 'opus', expected: 'C' },
       { type: 'analyst', model: 'opus', expected: 'T' },
       { type: 'qa-tester', model: 'sonnet', expected: 'q' },
       { type: 'vision', model: 'sonnet', expected: 'v' },
@@ -354,7 +354,7 @@ describe('Agents Element', () => {
       expect(result.detailLines).toHaveLength(1);
       // Single agent should use └─ (last indicator)
       expect(result.detailLines[0]).toContain('└─');
-      expect(result.detailLines[0]).toContain('O');
+      expect(result.detailLines[0]).toContain('A');
       expect(result.detailLines[0]).toContain('analyzing code');
     });
 
@@ -374,7 +374,7 @@ describe('Agents Element', () => {
       expect(result.detailLines).toHaveLength(2);
       // First agent uses ├─
       expect(result.detailLines[0]).toContain('├─');
-      expect(result.detailLines[0]).toContain('O');
+      expect(result.detailLines[0]).toContain('A');
       // Last agent uses └─
       expect(result.detailLines[1]).toContain('└─');
       expect(result.detailLines[1]).toContain('e');

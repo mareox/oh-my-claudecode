@@ -1,6 +1,7 @@
 ---
 name: cancel-ralph
-description: Cancel active Ralph (and ultrawork + ralph if active)
+description: Cancel active Ralph (and linked ultrawork if auto-activated)
+user-invocable: true
 ---
 
 # Cancel Ralph
@@ -16,7 +17,7 @@ Execute this command to fully cancel ALL persistent modes:
 ```bash
 mkdir -p .omc ~/.claude && \
 echo '{"active": false, "cancelled_at": "'$(date -Iseconds)'", "reason": "User cancelled via /cancel-ralph"}' > .omc/ralph-state.json && \
-echo '{"active": false, "cancelled_at": "'$(date -Iseconds)'", "reason": "User cancelled via /cancel-ralph"}' > .omc/ultrawork-state.json && \
+echo '{"active": false, "cancelled_at": "'$(date -Iseconds)'", "reason": "User cancelled via /cancel-ralph", "linked_to_ralph": false}' > .omc/ultrawork-state.json && \
 echo '{"active": false, "cancelled_at": "'$(date -Iseconds)'", "reason": "User cancelled via /cancel-ralph"}' > .omc/ralph-plan-state.json && \
 echo '{"active": false, "cancelled_at": "'$(date -Iseconds)'", "reason": "User cancelled via /cancel-ralph"}' > ~/.claude/ralph-state.json && \
 echo '{"active": false, "cancelled_at": "'$(date -Iseconds)'", "reason": "User cancelled via /cancel-ralph"}' > ~/.claude/ultrawork-state.json && \
@@ -28,11 +29,15 @@ After running this command, you are free to stop working. The persistent mode ho
 ## What Was Cancelled
 
 - **Ralph**: Self-referential completion loop
+- **Ultrawork**: Parallel execution mode (auto-activated with Ralph by default)
 - **Ralph Plan**: Iterative planning loop (if active via /ralplan)
-- **Ultrawork State**: Maximum intensity mode (if combined with ultrawork)
 - **Verification State**: Any pending architect verification
+
+## Note on Linked Modes
+
+Since v3.0, Ralph automatically activates Ultrawork for parallel execution. When you cancel Ralph, the linked Ultrawork is also cancelled. If you started Ultrawork separately (not via Ralph), use `/cancel-ultrawork` to cancel it independently.
 
 ## To Start Fresh
 
-- `/ralph "task"` - Start ralph only
-- `/ultrawork "task"` - Start ultrawork only
+- `/ralph "task"` - Start ralph with ultrawork (default)
+- `/ultrawork "task"` - Start ultrawork only (standalone)

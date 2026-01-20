@@ -1,6 +1,7 @@
 ---
 name: deepinit
 description: Deep codebase initialization with hierarchical AGENTS.md documentation
+user-invocable: true
 ---
 
 # Deep Init Skill
@@ -152,8 +153,8 @@ grep -r "<!-- Parent:" --include="AGENTS.md" .
 |------|-------|
 | Directory mapping | `explore` |
 | File analysis | `architect-low` |
-| Content generation | `document-writer` |
-| Multi-file writes | `junior` |
+| Content generation | `writer` |
+| Multi-file writes | `executor` |
 
 ## Empty Directory Handling
 

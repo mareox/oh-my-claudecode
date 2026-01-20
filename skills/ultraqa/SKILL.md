@@ -1,6 +1,7 @@
 ---
 name: ultraqa
 description: QA cycling workflow - test, verify, fix, repeat until goal met
+user-invocable: true
 ---
 
 # UltraQA Skill

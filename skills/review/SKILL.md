@@ -1,6 +1,7 @@
 ---
 name: review
 description: Review a plan with Critic
+user-invocable: true
 ---
 
 # Review Skill

@@ -3,7 +3,7 @@
  * Plugin Post-Install Setup
  *
  * Configures HUD statusline when plugin is installed.
- * This runs after `claude plugin install oh-my-claude-sisyphus@oh-my-claude-sisyphus`
+ * This runs after `claude plugin install oh-my-claudecode@oh-my-claudecode`
  */
 
 import { existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync, chmodSync } from 'node:fs';
@@ -41,7 +41,7 @@ async function main() {
   const home = homedir();
 
   // 1. Try plugin cache first (preferred for 3.0.0+)
-  const pluginCacheBase = join(home, ".claude/plugins/cache/oh-my-claude-sisyphus/oh-my-claude-sisyphus");
+  const pluginCacheBase = join(home, ".claude/plugins/cache/oh-my-claudecode/oh-my-claudecode");
   if (existsSync(pluginCacheBase)) {
     try {
       const versions = readdirSync(pluginCacheBase);
@@ -58,8 +58,8 @@ async function main() {
 
   // 2. Development paths
   const devPaths = [
-    join(home, "Workspace/oh-my-claude-sisyphus/dist/hud/index.js"),
-    join(home, "workspace/oh-my-claude-sisyphus/dist/hud/index.js"),
+    join(home, "Workspace/oh-my-claudecode/dist/hud/index.js"),
+    join(home, "workspace/oh-my-claudecode/dist/hud/index.js"),
   ];
 
   for (const devPath of devPaths) {

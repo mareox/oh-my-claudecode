@@ -1,6 +1,7 @@
 ---
 name: ultrawork
 description: Activate maximum performance mode with parallel agent orchestration for high-throughput task completion
+user-invocable: true
 ---
 
 # Ultrawork Skill
@@ -26,12 +27,12 @@ This skill enhances Claude's capabilities by:
 | Domain | LOW (Haiku) | MEDIUM (Sonnet) | HIGH (Opus) |
 |--------|-------------|-----------------|-------------|
 | **Analysis** | `architect-low` | `architect-medium` | `architect` |
-| **Execution** | `junior-low` | `junior` | `junior-high` |
+| **Execution** | `executor-low` | `executor` | `executor-high` |
 | **Search** | `explore` | `explore-medium` | - |
 | **Research** | `researcher-low` | `researcher` | - |
-| **Frontend** | `frontend-engineer-low` | `frontend-engineer` | `frontend-engineer-high` |
-| **Docs** | `document-writer` | - | - |
-| **Visual** | - | `multimodal-looker` | - |
+| **Frontend** | `designer-low` | `designer` | `designer-high` |
+| **Docs** | `writer` | - | - |
+| **Visual** | - | `vision` | - |
 | **Planning** | - | - | `planner`, `critic`, `analyst` |
 | **Testing** | - | `qa-tester` | - |
 
@@ -52,10 +53,10 @@ This skill enhances Claude's capabilities by:
 Task(subagent_type="architect-low", model="haiku", prompt="What does this function return?")
 
 // Standard implementation → MEDIUM tier
-Task(subagent_type="junior", model="sonnet", prompt="Add error handling to login")
+Task(subagent_type="executor", model="sonnet", prompt="Add error handling to login")
 
 // Complex refactoring → HIGH tier
-Task(subagent_type="junior-high", model="opus", prompt="Refactor auth module using JWT across 5 files")
+Task(subagent_type="executor-high", model="opus", prompt="Refactor auth module using JWT across 5 files")
 
 // Quick file lookup → LOW tier
 Task(subagent_type="explore", model="haiku", prompt="Find where UserService is defined")

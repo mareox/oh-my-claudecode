@@ -1,6 +1,7 @@
 ---
 name: deepsearch
 description: Thorough codebase search
+user-invocable: true
 ---
 
 # Deep Search Mode

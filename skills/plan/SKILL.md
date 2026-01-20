@@ -1,6 +1,7 @@
 ---
 name: plan
 description: Start a planning session with Planner
+user-invocable: true
 ---
 
 # Plan Skill

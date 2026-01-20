@@ -17,6 +17,26 @@ echo "║   Multi-Agent Orchestration for Claude Code               ║"
 echo "╚═══════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
+# ============================================================
+# DEPRECATION NOTICE - v3.0.0
+# ============================================================
+echo ""
+echo -e "\033[31m╔═══════════════════════════════════════════════════════════╗\033[0m"
+echo -e "\033[31m║           DEPRECATED - Script Installation Removed        ║\033[0m"
+echo -e "\033[31m╚═══════════════════════════════════════════════════════════╝\033[0m"
+echo ""
+echo -e "\033[33mAs of v3.0.0, oh-my-claudecode is installed via the Claude Code plugin system only.\033[0m"
+echo ""
+echo -e "\033[32mTo install:\033[0m"
+echo "  /plugin marketplace add Yeachan-Heo/oh-my-claudecode"
+echo ""
+echo -e "\033[32mThen run setup:\033[0m"
+echo "  /omc-setup"
+echo ""
+echo -e "\033[34mFull documentation: https://yeachan-heo.github.io/oh-my-claudecode-website\033[0m"
+echo ""
+exit 0
+
 # Claude Code config directory (always ~/.claude)
 CLAUDE_CONFIG_DIR="$HOME/.claude"
 
@@ -1688,42 +1708,40 @@ Use the Task tool to delegate to specialized agents:
 
 | Agent | Model | Purpose | When to Use |
 |-------|-------|---------|-------------|
-| `oracle` | Opus | Architecture & debugging | Complex problems, root cause analysis |
-| `librarian` | Sonnet | Documentation & research | Finding docs, understanding code |
+| `architect` | Opus | Architecture & debugging | Complex problems, root cause analysis |
+| `researcher` | Sonnet | Documentation & research | Finding docs, understanding code |
 | `explore` | Haiku | Fast search | Quick file/pattern searches |
-| `frontend-engineer` | Sonnet | UI/UX | Component design, styling |
-| `document-writer` | Haiku | Documentation | README, API docs, comments |
-| `multimodal-looker` | Sonnet | Visual analysis | Screenshots, diagrams |
-| `momus` | Opus | Plan review | Critical evaluation of plans |
-| `metis` | Opus | Pre-planning | Hidden requirements, risk analysis |
-| `sisyphus-junior` | Sonnet | Focused execution | Direct task implementation |
-| `prometheus` | Opus | Strategic planning | Creating comprehensive work plans |
+| `designer` | Sonnet | UI/UX | Component design, styling |
+| `writer` | Haiku | Documentation | README, API docs, comments |
+| `vision` | Sonnet | Visual analysis | Screenshots, diagrams |
+| `critic` | Opus | Plan review | Critical evaluation of plans |
+| `analyst` | Opus | Pre-planning | Hidden requirements, risk analysis |
+| `executor` | Sonnet | Focused execution | Direct task implementation |
+| `planner` | Opus | Strategic planning | Creating comprehensive work plans |
 
 ## Slash Commands
 
 | Command | Description |
 |---------|-------------|
-| `/sisyphus <task>` | Activate Sisyphus multi-agent orchestration |
-| `/sisyphus-default` | Configure Sisyphus for current project (./.claude/CLAUDE.md) |
-| `/sisyphus-default-global` | Configure Sisyphus globally (~/.claude/CLAUDE.md) |
+| `/orchestrate <task>` | Activate OMC multi-agent orchestration |
+| `/omc-default` | Configure OMC for current project (./.claude/CLAUDE.md) |
+| `/omc-default-global` | Configure OMC globally (~/.claude/CLAUDE.md) |
 | `/ultrawork <task>` | Maximum performance mode with parallel agents |
 | `/deepsearch <query>` | Thorough codebase search |
 | `/analyze <target>` | Deep analysis and investigation |
-| `/plan <description>` | Start planning session with Prometheus |
-| `/review [plan-path]` | Review a plan with Momus |
-| `/prometheus <task>` | Strategic planning with interview workflow |
-| `/orchestrator <task>` | Complex multi-step task coordination |
-| `/ralph-loop <task>` | Self-referential loop until task completion |
+| `/plan <description>` | Start planning session with Planner |
+| `/review [plan-path]` | Review a plan with Critic |
+| `/planner <task>` | Strategic planning with interview workflow |
+| `/ralph <task>` | Self-referential loop until task completion |
 | `/cancel-ralph` | Cancel active Ralph Loop |
-| `/update` | Check for and install updates |
 
 ## Planning Workflow
 
 1. Use `/plan` to start a planning session
-2. Prometheus will interview you about requirements
+2. Planner will interview you about requirements
 3. Say "Create the plan" when ready
-4. Use `/review` to have Momus evaluate the plan
-5. Execute the plan with `/sisyphus`
+4. Use `/review` to have Critic evaluate the plan
+5. Execute the plan with `/orchestrate`
 
 ## Orchestration Principles
 
@@ -1731,7 +1749,7 @@ Use the Task tool to delegate to specialized agents:
 2. **Parallelize**: Launch multiple subagents concurrently when tasks are independent
 3. **Persist**: Continue until ALL tasks are complete
 4. **Verify**: Check your todo list before declaring completion
-5. **Plan First**: For complex tasks, use Prometheus to create a plan
+5. **Plan First**: For complex tasks, use Planner to create a plan
 
 ## Critical Rules
 

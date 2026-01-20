@@ -10,14 +10,14 @@
     {
       "name": "oh-my-claudecode",
       "description": "Claude Code native multi-agent orchestration with intelligent model routing, 19 agent variants, and 25 powerful skills. Beyond the original fork - rebuilt for Claude's architecture.",
-      "version": "3.0.0-beta",
+      "version": "3.0.0",
       "author": {
         "name": "Yeachan Heo",
         "email": "hurrc04@gmail.com"
       },
       "source": "./",
       "category": "productivity",
-      "homepage": "https://github.com/Yeachan-Heo/oh-my-claude-sisyphus",
+      "homepage": "https://github.com/Yeachan-Heo/oh-my-claudecode",
       "tags": ["multi-agent", "orchestration", "delegation", "todo-management", "ultrawork"]
     }
   ]

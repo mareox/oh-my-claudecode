@@ -1,6 +1,7 @@
 ---
 name: hud
 description: Configure HUD display options (layout, presets, display elements)
+user-invocable: true
 ---
 
 # HUD Skill
@@ -64,7 +65,7 @@ Shows everything including multi-line agent details:
 [OMC] ralph:3/10 | US-002 (2/5) | ultrawork | ctx:[████░░]67% | agents:3 | bg:3/5 | todos:2/5
 ├─ O architect    2m   analyzing architecture patterns...
 ├─ e explore     45s   searching for test files
-└─ s sj-junior    1m   implementing validation logic
+└─ s executor     1m   implementing validation logic
 ```
 
 ## Multi-Line Agent Display
