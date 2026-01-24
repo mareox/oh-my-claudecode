@@ -1003,57 +1003,7 @@ Plans are saved to `.omc/plans/` for later execution with `/sisyphus`.
 Tell me about what you want to build or accomplish. I'll ask questions to understand the full scope before creating a plan.
 CMD_EOF
 
-# Ralph Loop Command
-cat > "$CLAUDE_CONFIG_DIR/commands/ralph-loop.md" << 'CMD_EOF'
----
-description: Start self-referential development loop until task completion
----
-
-[RALPH LOOP ACTIVATED]
-
-$ARGUMENTS
-
-## How Ralph Loop Works
-
-You are starting a Ralph Loop - a self-referential development loop that runs until task completion.
-
-1. Work on the task continuously and thoroughly
-2. When the task is FULLY complete, output: `<promise>DONE</promise>`
-3. If you stop without the promise tag, the loop will remind you to continue
-4. Maximum iterations: 100 (configurable)
-
-## Exit Conditions
-
-- **Completion**: Output `<promise>DONE</promise>` when fully done
-- **Cancel**: User runs `/cancel-ralph`
-- **Max Iterations**: Loop stops at limit
-
-## Guidelines
-
-- Break the task into steps and work through them systematically
-- Test your work as you go
-- Don't output the promise until you've verified everything works
-- Be thorough - the loop exists so you can take your time
-
----
-
-Begin working on the task. Remember to output `<promise>DONE</promise>` when complete.
-CMD_EOF
-
-# Cancel Ralph Command
-cat > "$CLAUDE_CONFIG_DIR/commands/cancel-ralph.md" << 'CMD_EOF'
----
-description: Cancel active Ralph Loop
----
-
-[RALPH LOOP CANCELLED]
-
-The Ralph Loop has been cancelled. You can stop working on the current task.
-
-If you want to start a new loop, use `/ralph-loop "task description"`.
-CMD_EOF
-
-echo -e "${GREEN}✓ Installed 10 slash commands${NC}"
+echo -e "${GREEN}✓ Installed 8 slash commands${NC}"
 
 echo -e "${BLUE}[5/6]${NC} Installing hook scripts..."
 mkdir -p "$CLAUDE_CONFIG_DIR/hooks"
@@ -1729,11 +1679,10 @@ Use the Task tool to delegate to specialized agents:
 | `/ultrawork <task>` | Maximum performance mode with parallel agents |
 | `/deepsearch <query>` | Thorough codebase search |
 | `/analyze <target>` | Deep analysis and investigation |
-| `/plan <description>` | Start planning session with Planner |
+| `/plan <description>` | Start planning session |
 | `/review [plan-path]` | Review a plan with Critic |
-| `/planner <task>` | Strategic planning with interview workflow |
 | `/ralph <task>` | Self-referential loop until task completion |
-| `/cancel-ralph` | Cancel active Ralph Loop |
+| `/cancel` | Cancel active loops/modes |
 
 ## Planning Workflow
 

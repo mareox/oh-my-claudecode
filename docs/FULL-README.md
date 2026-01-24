@@ -223,7 +223,7 @@ Smart cancellation that auto-detects active mode:
 
 **Auto-detects and cancels:** autopilot, ultrapilot, ralph, ultrawork, ultraqa, ecomode, swarm, pipeline
 
-**Deprecation notice:** Individual cancel commands (`cancel-ralph`, `cancel-ultraqa`, `cancel-ultrawork`, `cancel-ecomode`) still work but are deprecated. Use `/oh-my-claudecode:cancel` instead.
+**Removed in v3.6.0:** Individual cancel commands (`cancel-ralph`, `cancel-ultraqa`, `cancel-ultrawork`, `cancel-ecomode`, `cancel-autopilot`) have been removed. Use `/oh-my-claudecode:cancel` instead.
 
 ### 🔍 Explore-High Agent
 
@@ -293,7 +293,7 @@ chmod +x scripts/install.sh
 Configure omc for the current project only:
 
 ```
-/oh-my-claudecode:omc-default
+/oh-my-claudecode:omc-setup
 ```
 
 - Creates `./.claude/CLAUDE.md` in your current project
@@ -306,7 +306,7 @@ Configure omc for the current project only:
 Configure omc for all Claude Code sessions:
 
 ```
-/oh-my-claudecode:omc-default-global
+/oh-my-claudecode:omc-setup
 ```
 
 - Creates `~/.claude/CLAUDE.md` globally
@@ -338,7 +338,7 @@ Without running one of these commands, Claude operates with basic capabilities. 
 - **First time**: Run after installation (choose project or global)
 - **After updates**: Re-run to get the latest configuration
 - **Different machines**: Run on each machine where you use Claude Code
-- **New projects**: Run `/oh-my-claudecode:omc-default` in each project that needs omc
+- **New projects**: Run `/oh-my-claudecode:omc-setup --local` in each project that needs omc
 
 ### Configuration Precedence
 
@@ -348,7 +348,7 @@ If both configurations exist, **project-scoped takes precedence** over global:
 ./.claude/CLAUDE.md  (project)   →  Overrides  →  ~/.claude/CLAUDE.md  (global)
 ```
 
-> **NOTE**: After updating the plugin (via `npm update`, `git pull`, or Claude Code's plugin update), you MUST re-run `/oh-my-claudecode:omc-default` or `/oh-my-claudecode:omc-default-global` to apply the latest CLAUDE.md changes. The plugin update does NOT automatically update your CLAUDE.md files.
+> **NOTE**: After updating the plugin (via `npm update`, `git pull`, or Claude Code's plugin update), you MUST re-run `/oh-my-claudecode:omc-setup` to apply the latest CLAUDE.md changes. The plugin update does NOT automatically update your CLAUDE.md files.
 
 ---
 
@@ -363,8 +363,8 @@ oh-my-claudecode/
 ├── .claude-plugin/
 │   └── plugin.json            # Plugin manifest
 ├── agents/                    # 32 specialized agents (tiered: architect, executor, explore, etc.)
-├── commands/                  # 37 slash commands
-├── skills/                    # 40 skills (orchestrate, ultrawork, ultrapilot, swarm, pipeline, ecomode, ralph, planner, research, tdd, build-fix, code-review, security-review, and more)
+├── commands/                  # 35 slash commands
+├── skills/                    # 35 skills (orchestrate, ultrawork, ultrapilot, swarm, pipeline, ecomode, ralph, planner, research, tdd, build-fix, code-review, security-review, and more)
 ├── hooks/
 │   └── hooks.json             # Hook configuration
 └── scripts/                   # Hook scripts
@@ -390,8 +390,6 @@ The installer adds to your Claude Code config (`~/.claude/`):
 │   └── qa-tester.md           # CLI/service testing (Sonnet)
 ├── commands/
 │   ├── orchestrate.md      # /oh-my-claudecode:orchestrate command
-│   ├── omc-default.md      # /oh-my-claudecode:omc-default command (project-scoped)
-│   ├── omc-default-global.md # /oh-my-claudecode:omc-default-global command (global)
 │   ├── ultrawork.md        # /oh-my-claudecode:ultrawork command
 │   ├── deepsearch.md       # /oh-my-claudecode:deepsearch command
 │   ├── analyze.md          # /oh-my-claudecode:analyze command
@@ -399,8 +397,7 @@ The installer adds to your Claude Code config (`~/.claude/`):
 │   ├── review.md           # /oh-my-claudecode:review command (critic)
 │   ├── planner.md          # /oh-my-claudecode:planner command
 │   ├── orchestrator.md     # /oh-my-claudecode:orchestrator command
-│   ├── ralph-loop.md       # /oh-my-claudecode:ralph-loop command
-│   └── cancel-ralph.md     # /oh-my-claudecode:cancel-ralph command
+│   └── ralph-loop.md       # /oh-my-claudecode:ralph-loop command
 ├── skills/
 │   ├── ultrawork/SKILL.md  # Maximum performance mode
 │   ├── deepinit/SKILL.md   # Hierarchical AGENTS.md generation
@@ -424,14 +421,10 @@ claude
 | Command | Description |
 |---------|-------------|
 | `/oh-my-claudecode:orchestrate <task>` | Activate multi-agent orchestration mode |
-| `/oh-my-claudecode:omc-default` | Configure omc for current project (./.claude/CLAUDE.md) |
-| `/oh-my-claudecode:omc-default-global` | Configure omc globally (~/.claude/CLAUDE.md) |
 | `/oh-my-claudecode:ultrawork <task>` | Maximum performance mode with parallel agents |
 | `/oh-my-claudecode:ralph-init <task>` | Initialize PRD (Product Requirements Document) for structured task tracking |
 | `/oh-my-claudecode:ralph <task>` | Self-referential loop until task completion |
 | `/oh-my-claudecode:ultraqa <goal>` | Autonomous QA cycling workflow (test → verify → fix → repeat) |
-| `/oh-my-claudecode:cancel-ralph` | Cancel active Ralph Loop |
-| `/oh-my-claudecode:cancel-ultraqa` | Cancel active UltraQA cycling workflow |
 | `/oh-my-claudecode:note <content>` | Save notes to notepad.md for compaction resilience |
 | `/oh-my-claudecode:deepsearch <query>` | Thorough multi-strategy codebase search |
 | `/oh-my-claudecode:deepinit [path]` | Index codebase with hierarchical AGENTS.md files |
@@ -448,12 +441,6 @@ claude
 
 # Activate orchestration for a task
 /oh-my-claudecode:orchestrate refactor the authentication module
-
-# Configure for current project
-/oh-my-claudecode:omc-default
-
-# Or configure globally for all projects
-/oh-my-claudecode:omc-default-global
 
 # Use ultrawork for maximum performance
 /oh-my-claudecode:ultrawork implement user dashboard with charts
@@ -558,7 +545,7 @@ Oh-my-claudecode includes 19 lifecycle hooks that enhance Claude Code's behavior
 
 ## Builtin Skills
 
-40 builtin skills provide specialized capabilities:
+35 builtin skills provide specialized capabilities:
 
 ### Core Skills
 | Skill | Description |
@@ -595,13 +582,6 @@ Oh-my-claudecode includes 19 lifecycle hooks that enhance Claude Code's behavior
 |-------|-------------|
 | **note** | Save notes to compaction-resilient notepad |
 | **cancel** | Unified cancellation for all modes (v3.4.0) |
-| **cancel-autopilot** | Cancel autopilot (deprecated - use cancel) |
-| **cancel-ralph** | Cancel Ralph Loop (deprecated - use cancel) |
-| **cancel-ultraqa** | Cancel UltraQA (deprecated - use cancel) |
-| **cancel-ultrawork** | Cancel ultrawork (deprecated - use cancel) |
-| **cancel-ecomode** | Cancel ecomode (deprecated - use cancel) |
-| **omc-default** | Configure omc for current project |
-| **omc-default-global** | Configure omc globally |
 | **omc-setup** | One-time setup wizard |
 | **doctor** | Diagnose and fix installation issues |
 | **help** | Show OMC usage guide |
@@ -610,8 +590,6 @@ Oh-my-claudecode includes 19 lifecycle hooks that enhance Claude Code's behavior
 | **mcp-setup** | Configure MCP servers (v3.4.0) |
 
 Skills are automatically activated via slash commands or magic keywords.
-
-**Note:** Individual cancel commands (`cancel-ralph`, `cancel-ultraqa`, `cancel-ultrawork`, `cancel-ecomode`, `cancel-autopilot`) are deprecated in v3.4.0. Use the unified `/oh-my-claudecode:cancel` command instead, which auto-detects the active mode.
 
 ---
 
@@ -756,7 +734,7 @@ Or manually:
 
 ```bash
 rm ~/.claude/agents/{architect,researcher,explore,designer,writer,vision,critic,analyst,executor,planner,qa-tester}.md
-rm ~/.claude/commands/{orchestrate,omc-default,omc-default-global,ultrawork,deepsearch,analyze,plan,review,planner,orchestrator,ralph-loop,cancel-ralph}.md
+rm ~/.claude/commands/{orchestrate,ultrawork,deepsearch,analyze,plan,review,planner,orchestrator,ralph-loop}.md
 ```
 
 ---
@@ -894,7 +872,7 @@ The original oh-my-opencode used multiple AI providers. This project uses Claude
 |---------|-------------|
 | **32 Specialized Agents** | architect, researcher, explore, designer, writer, vision, qa-tester, critic, analyst, executor, planner (+ tiered variants: -low, -medium, -high) + security-reviewer, build-fixer, tdd-guide, code-reviewer, scientist (all with tier variants) |
 | **19 Lifecycle Hooks** | rules-injector, omc-orchestrator, auto-slash-command, keyword-detector, ralph-loop, todo-continuation, notepad, post-tool-use, context-window-limit-recovery, preemptive-compaction, session-recovery, directory-readme-injector, comment-checker, thinking-block-validator, empty-message-sanitizer, edit-error-recovery, non-interactive-env, agent-usage-reminder, background-notification |
-| **37 Builtin Skills** | orchestrate, autopilot, ultrawork, ultrapilot, swarm, pipeline, ecomode, ralph, ralph-init, ultraqa, planner, plan, ralplan, review, deepinit, deepsearch, analyze, research, frontend-ui-ux, git-master, tdd, learner, note, cancel (unified), cancel-autopilot, cancel-ralph, cancel-ultraqa, cancel-ultrawork, cancel-ecomode, omc-default, omc-default-global, omc-setup, doctor, help, hud, release, mcp-setup |
+| **35 Builtin Skills** | orchestrate, autopilot, ultrawork, ultrapilot, swarm, pipeline, ecomode, ralph, ralph-init, ultraqa, planner, plan, ralplan, review, deepinit, deepsearch, analyze, research, frontend-ui-ux, git-master, tdd, learner, note, cancel, omc-setup, doctor, help, hud, release, mcp-setup |
 | **Magic Keywords** | `ultrawork`, `search`, `analyze`, `ultrathink` trigger enhanced modes |
 | **Slash Commands** | All skills available via `/oh-my-claudecode:skill-name` (e.g., `/oh-my-claudecode:ultrawork`, `/oh-my-claudecode:ralph`, `/oh-my-claudecode:plan`) |
 | **Compaction-Resilient Memory** | Three-tier notepad system (Priority Context, Working Memory, MANUAL) |

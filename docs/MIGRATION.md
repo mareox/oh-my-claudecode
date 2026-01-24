@@ -6,9 +6,73 @@ This guide covers all migration paths for oh-my-claudecode. Find your current ve
 
 ## Table of Contents
 
+- [v3.5 → v3.6: Skill Consolidation](#v35--v36-skill-consolidation)
 - [v2.x → v3.0: Package Rename & Auto-Activation](#v2x--v30-package-rename--auto-activation)
 - [v3.0 → v3.1: Notepad Wisdom & Enhanced Features](#v30--v31-notepad-wisdom--enhanced-features)
 - [v3.x → v4.0: Major Architecture Overhaul](#v3x--v40-major-architecture-overhaul)
+
+---
+
+## v3.5 → v3.6: Skill Consolidation
+
+### TL;DR
+
+8 deprecated skills have been removed. The unified `/cancel` and `/omc-setup` commands replace them.
+
+### Removed Skills
+
+The following skills have been **completely removed** in v3.6.0:
+
+| Removed Skill | Replacement |
+|---------------|-------------|
+| `cancel-autopilot` | `/oh-my-claudecode:cancel` |
+| `cancel-ralph` | `/oh-my-claudecode:cancel` |
+| `cancel-ultrawork` | `/oh-my-claudecode:cancel` |
+| `cancel-ultraqa` | `/oh-my-claudecode:cancel` |
+| `cancel-ecomode` | `/oh-my-claudecode:cancel` |
+| `omc-default` | `/oh-my-claudecode:omc-setup --local` |
+| `omc-default-global` | `/oh-my-claudecode:omc-setup --global` |
+| `planner` | `/oh-my-claudecode:plan` |
+
+### What Changed
+
+**Before v3.6:**
+```bash
+/oh-my-claudecode:cancel-ralph      # Cancel ralph specifically
+/oh-my-claudecode:omc-default       # Configure local project
+/oh-my-claudecode:planner "task"    # Start planning
+```
+
+**After v3.6:**
+```bash
+/oh-my-claudecode:cancel            # Auto-detects and cancels any active mode
+/oh-my-claudecode:omc-setup --local # Configure local project
+/oh-my-claudecode:plan "task"       # Start planning (includes interview mode)
+```
+
+### New Features
+
+**New skill: `/learn-about-omc`**
+- Analyzes your OMC usage patterns
+- Provides personalized recommendations
+- Identifies underutilized features
+
+**Plan skill now supports consensus mode:**
+```bash
+/oh-my-claudecode:plan --consensus "task"  # Iterative planning with Critic review
+/oh-my-claudecode:ralplan "task"           # Alias for plan --consensus
+```
+
+### Migration Steps
+
+1. **No action required** - The unified `/cancel` command already worked in v3.5
+2. **Update any scripts** that reference removed commands
+3. **Re-run `/omc-setup`** if you want to update your CLAUDE.md configuration
+
+### Skill Count
+
+- v3.5: 42 skills
+- v3.6: 35 skills (8 removed, 1 added)
 
 ---
 
