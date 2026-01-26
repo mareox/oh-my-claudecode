@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.1] - 2026-01-26
+
+### Changed
+
+- **CI**: Removed Claude CI workflow (#122)
+  - Streamlined CI pipeline by removing redundant Claude-based testing
+
+### Fixed
+
+- **Setup**: CLAUDE.md is now backed up before overwrite (#121)
+  - Prevents accidental loss of user customizations during setup
+  - Backup saved to `CLAUDE.md.backup`
+
+- **Docs**: Fixed npm package name in installation documentation (#120)
+  - Corrected references to use proper package name
+
+- **Platform**: Windows-encoded paths support (#117)
+  - Improved path handling for Windows file systems
+  - Resolves issues with special characters in paths
+
+### Added
+
+- **Testing**: 247 new tests + analytics implementation (#116)
+  - Comprehensive test coverage improvements
+  - Enhanced analytics tracking system
+
 ## [3.6.0] - 2026-01-26
 
 ### Added
