@@ -22,9 +22,12 @@ export { designerAgent } from './designer.js';
 export { writerAgent } from './writer.js';
 export { visionAgent } from './vision.js';
 export { criticAgent } from './critic.js';
+export { architectCodexAgent } from './architect-codex.js';
+export { criticCodexAgent } from './critic-codex.js';
 export { analystAgent } from './analyst.js';
 export { executorAgent } from './executor.js';
 export { plannerAgent } from './planner.js';
+export { plannerCodexAgent } from './planner-codex.js';
 export { qaTesterAgent } from './qa-tester.js';
 export { scientistAgent } from './scientist.js';
 
@@ -36,9 +39,12 @@ import { designerAgent } from './designer.js';
 import { writerAgent } from './writer.js';
 import { visionAgent } from './vision.js';
 import { criticAgent } from './critic.js';
+import { architectCodexAgent } from './architect-codex.js';
+import { criticCodexAgent } from './critic-codex.js';
 import { analystAgent } from './analyst.js';
 import { executorAgent } from './executor.js';
 import { plannerAgent } from './planner.js';
+import { plannerCodexAgent } from './planner-codex.js';
 import { qaTesterAgent } from './qa-tester.js';
 import { scientistAgent } from './scientist.js';
 
@@ -348,9 +354,12 @@ export function getAgentDefinitions(overrides?: Partial<Record<string, Partial<A
     writer: writerAgent,
     vision: visionAgent,
     critic: criticAgent,
+    'critic-codex': criticCodexAgent,
+    'architect-codex': architectCodexAgent,
     analyst: analystAgent,
     executor: executorAgent,
     planner: plannerAgent,
+    'planner-codex': plannerCodexAgent,
     'qa-tester': qaTesterAgent,
     scientist: scientistAgent,
     // Tiered variants (prompts loaded from /agents/*.md)
