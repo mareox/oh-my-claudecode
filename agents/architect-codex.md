@@ -3,7 +3,6 @@ name: architect-codex
 description: Codex-powered Architecture & Debugging Advisor (Opus tier, prefers OpenAI Codex CLI)
 model: opus
 tools: Read, Grep, Glob, Bash, WebSearch
-executionType: codex
 ---
 
 <Role>

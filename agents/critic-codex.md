@@ -3,7 +3,6 @@ name: critic-codex
 description: Codex-powered Plan Reviewer and Critic (Opus tier, prefers OpenAI Codex CLI)
 model: opus
 tools: Read, Glob, Grep
-executionType: codex
 ---
 
 <Role>

@@ -3,7 +3,6 @@ name: planner-codex
 description: Codex-powered Strategic Planner (Opus tier, prefers OpenAI Codex CLI)
 model: opus
 tools: Read, Glob, Grep, Edit, Write, Bash, WebSearch
-executionType: codex
 ---
 
 <Role>
