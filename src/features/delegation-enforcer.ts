@@ -9,6 +9,7 @@
  */
 
 import { getAgentDefinitions } from '../agents/definitions.js';
+import { isCodexAvailable, getCodexVersion } from '../agents/codex-executor.js';
 import type { ModelType } from '../shared/types.js';
 
 /**
@@ -75,11 +76,17 @@ export function enforceModel(agentInput: AgentInput): EnforcementResult {
     throw new Error(`No default model defined for agent: ${agentType}`);
   }
 
-  // Warn if agent has codex execution type (not yet implemented)
+  // Handle codex execution type - only warn if Codex is available
   if (agentDef.executionType === 'codex') {
-    console.warn(
-      `[OMC] Warning: Agent "${agentType}" has executionType='codex' but Codex routing is not yet implemented. Falling back to Claude SDK.`
-    );
+    const codexAvailable = isCodexAvailable();
+
+    if (codexAvailable) {
+      const version = getCodexVersion();
+      console.warn(
+        `[OMC] Agent "${agentType}" prefers Codex${version ? ` (${version})` : ''} but routing not yet implemented. Using Claude SDK.`
+      );
+    }
+    // If Codex not available: silent fallback (per user intent)
   }
 
   // Convert ModelType to SDK model type
