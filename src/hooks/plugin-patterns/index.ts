@@ -10,7 +10,7 @@
  */
 
 import { existsSync, readFileSync } from 'fs';
-import { join, extname } from 'path';
+import { join, extname, normalize, isAbsolute } from 'path';
 import { execFileSync } from 'child_process';
 
 // =============================================================================
@@ -39,11 +39,18 @@ function parseCommand(command: string): { binary: string; args: string[] } {
 /**
  * Validate file path to prevent command injection
  * Rejects shell metacharacters that could be used for injection
+ * Also blocks path traversal attempts
  */
 function isValidFilePath(filePath: string): boolean {
   // Reject common shell metacharacters
   const dangerousChars = /[;|&`$(){}[\]<>!#*?\\\n\r]/;
-  return !dangerousChars.test(filePath);
+  if (dangerousChars.test(filePath)) return false;
+
+  // Block path traversal
+  const normalized = normalize(filePath);
+  if (normalized.includes('..') || isAbsolute(normalized)) return false;
+
+  return true;
 }
 
 // =============================================================================
