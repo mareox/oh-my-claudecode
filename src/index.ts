@@ -324,6 +324,21 @@ export function createSisyphusSession(options?: SisyphusOptions): SisyphusSessio
     allowedTools.push(`mcp__${serverName}__*`);
   }
 
+  // Add LSP tools (opt-out via config.features.lspTools = false)
+  if (config.features?.lspTools !== false) {
+    allowedTools.push(
+      'lsp_hover', 'lsp_goto_definition', 'lsp_find_references',
+      'lsp_document_symbols', 'lsp_workspace_symbols', 'lsp_diagnostics',
+      'lsp_diagnostics_directory', 'lsp_servers', 'lsp_prepare_rename',
+      'lsp_rename', 'lsp_code_actions', 'lsp_code_action_resolve'
+    );
+  }
+
+  // Add AST tools (opt-out via config.features.astTools = false)
+  if (config.features?.astTools !== false) {
+    allowedTools.push('ast_grep_search', 'ast_grep_replace');
+  }
+
   // Create magic keyword processor
   const processPrompt = createMagicKeywordProcessor(config.magicKeywords);
 
