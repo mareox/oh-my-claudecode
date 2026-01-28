@@ -10,6 +10,7 @@ import { join, extname } from 'path';
 import { lspClientManager } from '../lsp/index.js';
 import type { Diagnostic } from '../lsp/index.js';
 import { LSP_DIAGNOSTICS_WAIT_MS } from './index.js';
+import { LSP_SERVERS } from '../lsp/servers.js';
 
 export interface LspDiagnosticWithFile {
   file: string;
@@ -22,6 +23,19 @@ export interface LspAggregationResult {
   errorCount: number;
   warningCount: number;
   filesChecked: number;
+}
+
+/**
+ * Get all file extensions supported by configured LSP servers
+ */
+function getAllSupportedExtensions(): string[] {
+  const extensions = new Set<string>();
+  for (const config of Object.values(LSP_SERVERS)) {
+    for (const ext of config.extensions) {
+      extensions.add(ext);
+    }
+  }
+  return Array.from(extensions);
 }
 
 /**
@@ -70,15 +84,16 @@ function findFiles(directory: string, extensions: string[], ignoreDirs: string[]
 /**
  * Run LSP diagnostics on all TypeScript/JavaScript files in a directory
  * @param directory - Project directory to scan
- * @param extensions - File extensions to check (default: ['.ts', '.tsx', '.js', '.jsx'])
+ * @param extensions - File extensions to check (optional, defaults to all LSP-supported extensions)
  * @returns Aggregated diagnostics from all files
  */
 export async function runLspAggregatedDiagnostics(
   directory: string,
-  extensions: string[] = ['.ts', '.tsx', '.js', '.jsx']
+  extensions?: string[]
 ): Promise<LspAggregationResult> {
+  const effectiveExtensions = extensions ?? getAllSupportedExtensions();
   // Find all matching files
-  const files = findFiles(directory, extensions, ['node_modules', 'dist', 'build', '.git']);
+  const files = findFiles(directory, effectiveExtensions, ['node_modules', 'dist', 'build', '.git']);
 
   const allDiagnostics: LspDiagnosticWithFile[] = [];
   let filesChecked = 0;
