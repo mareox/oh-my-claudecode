@@ -131,6 +131,11 @@ export interface TodoContinuationHook {
  * - manual_stop: Explicit stop button
  * - abort, cancel, interrupt: Generic abort patterns
  *
+ * NOTE: Per official Anthropic docs, the Stop hook "Does not run if
+ * the stoppage occurred due to a user interrupt." This means this
+ * function may never receive user-abort contexts in practice.
+ * It is kept as defensive code in case the behavior changes.
+ *
  * If the hook fails to detect user aborts correctly, these patterns
  * should be updated based on observed Claude Code behavior.
  */
@@ -382,8 +387,9 @@ export function checkLegacyTodos(sessionId?: string, directory?: string): Incomp
  * - Legacy todos are checked to set source='both' for informational purposes
  * - If no incomplete Tasks exist, returns legacy todo count (source: 'todo')
  *
- * Shell templates use a combined count for the "should continue?" decision,
- * which is correct for that boolean check even if it double-counts.
+ * NOTE ON COUNTING: Shell templates use a combined Task + Todo count for the
+ * "should continue?" boolean check, which may differ from the count returned here.
+ * The boolean decision (continue or not) is equivalent; only the displayed count differs.
  */
 export async function checkIncompleteTodos(
   sessionId?: string,
@@ -409,9 +415,11 @@ export async function checkIncompleteTodos(
   if (taskResult && taskResult.count > 0) {
     return {
       count: taskResult.count,
+      // taskResult.tasks only contains incomplete tasks (pending/in_progress)
+      // so status is safe to cast to Todo['status'] (no 'deleted' will appear)
       todos: taskResult.tasks.map(t => ({
         content: t.subject,
-        status: t.status,
+        status: t.status as Todo['status'],
         id: t.id
       })),
       total: taskResult.total,

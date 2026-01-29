@@ -47,13 +47,15 @@ if [ -n "$SESSION_ID" ] && is_valid_session_id "$SESSION_ID" && [ -d "$TASKS_DIR
     if [ -f "$task_file" ] && [ "$(basename "$task_file")" != ".lock" ]; then
       if [ "$JQ_AVAILABLE" = "true" ]; then
         STATUS=$(jq -r '.status // "pending"' "$task_file" 2>/dev/null)
-        if [ "$STATUS" != "completed" ]; then
+        # Match TypeScript isTaskIncomplete(): only pending/in_progress are incomplete
+        # 'deleted' and 'completed' are both treated as done
+        if [ "$STATUS" = "pending" ] || [ "$STATUS" = "in_progress" ]; then
           TASK_COUNT=$((TASK_COUNT + 1))
         fi
       else
-        # Fallback: grep for status field, count if not "completed"
+        # Fallback: grep for incomplete status values (pending or in_progress)
         # This is less accurate but provides basic functionality
-        if ! grep -q '"status"[[:space:]]*:[[:space:]]*"completed"' "$task_file" 2>/dev/null; then
+        if grep -qE '"status"[[:space:]]*:[[:space:]]*"(pending|in_progress)"' "$task_file" 2>/dev/null; then
           TASK_COUNT=$((TASK_COUNT + 1))
         fi
       fi

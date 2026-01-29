@@ -40,7 +40,9 @@ function countIncompleteTasks(sessionId) {
       try {
         const content = readFileSync(join(taskDir, file), 'utf-8');
         const task = JSON.parse(content);
-        if (task.status !== 'completed') count++;
+        // Match TypeScript isTaskIncomplete(): only pending/in_progress are incomplete
+        // 'deleted' and 'completed' are both treated as done
+        if (task.status === 'pending' || task.status === 'in_progress') count++;
       } catch { /* skip invalid files */ }
     }
   } catch { /* dir read error */ }
