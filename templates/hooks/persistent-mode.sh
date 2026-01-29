@@ -3,6 +3,21 @@
 # Unified handler for ultrawork, ralph-loop, and todo continuation
 # Prevents stopping when work remains incomplete
 
+# Validate session ID to prevent path traversal attacks
+# Returns 0 (success) for valid, 1 for invalid
+is_valid_session_id() {
+  local id="$1"
+  if [ -z "$id" ]; then
+    return 1
+  fi
+  # Allow alphanumeric, hyphens, and underscores only
+  # Must not start with dot or hyphen, max 256 chars
+  if echo "$id" | grep -qE '^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$'; then
+    return 0
+  fi
+  return 1
+}
+
 # Read stdin
 INPUT=$(cat)
 
@@ -22,17 +37,33 @@ fi
 # Check for incomplete tasks in new Task system (priority over todos)
 TASKS_DIR="$HOME/.claude/tasks"
 TASK_COUNT=0
-if [ -n "$SESSION_ID" ] && [ -d "$TASKS_DIR/$SESSION_ID" ]; then
+JQ_AVAILABLE=false
+if command -v jq &> /dev/null; then
+  JQ_AVAILABLE=true
+fi
+
+if [ -n "$SESSION_ID" ] && is_valid_session_id "$SESSION_ID" && [ -d "$TASKS_DIR/$SESSION_ID" ]; then
   for task_file in "$TASKS_DIR/$SESSION_ID"/*.json; do
     if [ -f "$task_file" ] && [ "$(basename "$task_file")" != ".lock" ]; then
-      if command -v jq &> /dev/null; then
+      if [ "$JQ_AVAILABLE" = "true" ]; then
         STATUS=$(jq -r '.status // "pending"' "$task_file" 2>/dev/null)
         if [ "$STATUS" != "completed" ]; then
+          TASK_COUNT=$((TASK_COUNT + 1))
+        fi
+      else
+        # Fallback: grep for status field, count if not "completed"
+        # This is less accurate but provides basic functionality
+        if ! grep -q '"status"[[:space:]]*:[[:space:]]*"completed"' "$task_file" 2>/dev/null; then
           TASK_COUNT=$((TASK_COUNT + 1))
         fi
       fi
     fi
   done
+
+  # Warn if using fallback (only once per invocation, to stderr)
+  if [ "$JQ_AVAILABLE" = "false" ] && [ "$TASK_COUNT" -gt 0 ]; then
+    echo "[OMC WARNING] jq not installed - Task counting may be less accurate. Install jq for best results." >&2
+  fi
 fi
 
 # Extract stop reason for abort detection

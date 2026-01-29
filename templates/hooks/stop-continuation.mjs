@@ -7,9 +7,29 @@ import { readdirSync, readFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
 
-// Count incomplete Task system tasks
+/**
+ * Validates session ID to prevent path traversal attacks.
+ * @param {string} sessionId
+ * @returns {boolean}
+ */
+function isValidSessionId(sessionId) {
+  if (!sessionId || typeof sessionId !== 'string') return false;
+  return /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/.test(sessionId);
+}
+
+/**
+ * Count incomplete tasks in the new Task system.
+ *
+ * SYNC NOTICE: This function is intentionally duplicated across:
+ * - templates/hooks/persistent-mode.mjs
+ * - templates/hooks/stop-continuation.mjs
+ * - src/hooks/todo-continuation/index.ts (as checkIncompleteTasks)
+ *
+ * Templates cannot import shared modules (they're standalone scripts).
+ * When modifying this logic, update ALL THREE files to maintain consistency.
+ */
 function countIncompleteTasks(sessionId) {
-  if (!sessionId) return 0;
+  if (!sessionId || !isValidSessionId(sessionId)) return 0;
   const taskDir = join(homedir(), '.claude', 'tasks', sessionId);
   if (!existsSync(taskDir)) return 0;
 

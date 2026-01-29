@@ -3,6 +3,18 @@
 # Checks for incomplete todos and injects continuation prompt
 # Ported from oh-my-opencode's todo-continuation-enforcer
 
+# Validate session ID to prevent path traversal attacks
+is_valid_session_id() {
+  local id="$1"
+  if [ -z "$id" ]; then
+    return 1
+  fi
+  if echo "$id" | grep -qE '^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$'; then
+    return 0
+  fi
+  return 1
+}
+
 # Read stdin
 INPUT=$(cat)
 
@@ -15,17 +27,31 @@ fi
 # Check for incomplete tasks in new Task system
 TASKS_DIR="$HOME/.claude/tasks"
 TASK_COUNT=0
-if [ -n "$SESSION_ID" ] && [ -d "$TASKS_DIR/$SESSION_ID" ]; then
+JQ_AVAILABLE=false
+if command -v jq &> /dev/null; then
+  JQ_AVAILABLE=true
+fi
+
+if [ -n "$SESSION_ID" ] && is_valid_session_id "$SESSION_ID" && [ -d "$TASKS_DIR/$SESSION_ID" ]; then
   for task_file in "$TASKS_DIR/$SESSION_ID"/*.json; do
     if [ -f "$task_file" ] && [ "$(basename "$task_file")" != ".lock" ]; then
-      if command -v jq &> /dev/null; then
+      if [ "$JQ_AVAILABLE" = "true" ]; then
         STATUS=$(jq -r '.status // "pending"' "$task_file" 2>/dev/null)
         if [ "$STATUS" != "completed" ]; then
+          TASK_COUNT=$((TASK_COUNT + 1))
+        fi
+      else
+        # Fallback: grep for status field
+        if ! grep -q '"status"[[:space:]]*:[[:space:]]*"completed"' "$task_file" 2>/dev/null; then
           TASK_COUNT=$((TASK_COUNT + 1))
         fi
       fi
     fi
   done
+
+  if [ "$JQ_AVAILABLE" = "false" ] && [ "$TASK_COUNT" -gt 0 ]; then
+    echo "[OMC WARNING] jq not installed - Task counting may be less accurate." >&2
+  fi
 fi
 
 # Check for incomplete todos in the Claude todos directory

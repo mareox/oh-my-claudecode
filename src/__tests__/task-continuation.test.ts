@@ -15,6 +15,7 @@ import {
   createTodoContinuationHook,
   formatTodoStatus,
   getNextPendingTodo,
+  isValidSessionId,
   type Todo,
   type IncompleteTodosResult,
   type StopContext,
@@ -53,7 +54,8 @@ describe('Task System Support', () => {
     it('should handle empty session ID', () => {
       const sessionId = '';
       const result = getTaskDirectory(sessionId);
-      expect(result).toBe(path.join(mockHomedir, '.claude', 'tasks', ''));
+      // After security validation: empty string is invalid → returns ''
+      expect(result).toBe('');
     });
   });
 
@@ -796,6 +798,106 @@ describe('Task System Support', () => {
       const result = readTaskFiles('session123');
       expect(result[0].blocks).toEqual(['2', '3']);
       expect(result[0].blockedBy).toEqual(['0']);
+    });
+  });
+
+  describe('Security: Session ID Validation', () => {
+    it('should reject path traversal attempts with ../', () => {
+      expect(isValidSessionId('../../../etc')).toBe(false);
+    });
+
+    it('should reject path traversal with encoded characters', () => {
+      expect(isValidSessionId('..%2F..%2F')).toBe(false);
+    });
+
+    it('should reject session IDs starting with dot', () => {
+      expect(isValidSessionId('.hidden')).toBe(false);
+    });
+
+    it('should reject session IDs starting with hyphen', () => {
+      expect(isValidSessionId('-invalid')).toBe(false);
+    });
+
+    it('should reject empty session ID', () => {
+      expect(isValidSessionId('')).toBe(false);
+    });
+
+    it('should reject null/undefined', () => {
+      expect(isValidSessionId(null as any)).toBe(false);
+      expect(isValidSessionId(undefined as any)).toBe(false);
+    });
+
+    it('should reject session IDs with slashes', () => {
+      expect(isValidSessionId('abc/def')).toBe(false);
+      expect(isValidSessionId('abc\\def')).toBe(false);
+    });
+
+    it('should reject session IDs with special characters', () => {
+      expect(isValidSessionId('abc$def')).toBe(false);
+      expect(isValidSessionId('abc;def')).toBe(false);
+      expect(isValidSessionId('abc|def')).toBe(false);
+    });
+
+    it('should accept valid alphanumeric session IDs', () => {
+      expect(isValidSessionId('abc123')).toBe(true);
+      expect(isValidSessionId('session-123')).toBe(true);
+      expect(isValidSessionId('session_123')).toBe(true);
+      expect(isValidSessionId('ABC123xyz')).toBe(true);
+    });
+
+    it('should accept session IDs up to 256 characters', () => {
+      const longId = 'a'.repeat(256);
+      expect(isValidSessionId(longId)).toBe(true);
+    });
+
+    it('should reject session IDs over 256 characters', () => {
+      const tooLongId = 'a'.repeat(257);
+      expect(isValidSessionId(tooLongId)).toBe(false);
+    });
+
+    it('should accept numeric session IDs starting with digit', () => {
+      expect(isValidSessionId('123456')).toBe(true);
+    });
+  });
+
+  describe('Security: getTaskDirectory with validation', () => {
+    it('should return empty string for invalid session ID', () => {
+      const result = getTaskDirectory('../../../etc/passwd');
+      expect(result).toBe('');
+    });
+
+    it('should return valid path for valid session ID', () => {
+      const result = getTaskDirectory('valid-session-123');
+      expect(result).toContain('valid-session-123');
+      expect(result).toContain('.claude/tasks');
+    });
+  });
+
+  describe('Security: readTaskFiles with validation', () => {
+    it('should return empty array for path traversal attempt', () => {
+      const result = readTaskFiles('../../../etc');
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('Security: checkIncompleteTasks with validation', () => {
+    it('should return zero count for invalid session ID', () => {
+      const result = checkIncompleteTasks('../../../etc');
+      expect(result.count).toBe(0);
+      expect(result.tasks).toEqual([]);
+      expect(result.total).toBe(0);
+    });
+  });
+
+  describe('Task status: deleted handling', () => {
+    it('should treat deleted status as valid task', () => {
+      const task = { id: '1', subject: 'Test', status: 'deleted' };
+      expect(isValidTask(task)).toBe(true);
+    });
+
+    it('should treat deleted task as complete (not incomplete)', () => {
+      const task: Task = { id: '1', subject: 'Test', status: 'deleted' };
+      expect(isTaskIncomplete(task)).toBe(false);
     });
   });
 });

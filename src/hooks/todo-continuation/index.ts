@@ -7,9 +7,46 @@
  * Ported from oh-my-opencode's todo-continuation-enforcer hook.
  */
 
+/**
+ * TERMINOLOGY:
+ * - "Task" (capitalized): New Claude Code Task system (~/.claude/tasks/)
+ * - "todo" (lowercase): Legacy todo system (~/.claude/todos/)
+ * - "item": Generic term for either Task or todo
+ */
+
+/**
+ * Debug logging for task/todo operations.
+ * Set OMC_DEBUG=1 or OMC_DEBUG=todo-continuation for verbose output.
+ */
+function debugLog(message: string, ...args: unknown[]): void {
+  const debug = process.env.OMC_DEBUG;
+  if (debug === '1' || debug === 'todo-continuation' || debug === 'true') {
+    console.error('[todo-continuation]', message, ...args);
+  }
+}
+
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+
+/**
+ * Validates that a session ID is safe to use in file paths.
+ * Session IDs should be alphanumeric with optional hyphens and underscores.
+ * This prevents path traversal attacks (e.g., "../../../etc").
+ *
+ * @param sessionId - The session ID to validate
+ * @returns true if the session ID is safe, false otherwise
+ */
+export function isValidSessionId(sessionId: string): boolean {
+  if (!sessionId || typeof sessionId !== 'string') {
+    return false;
+  }
+  // Allow alphanumeric, hyphens, and underscores only
+  // Must be 1-256 characters (reasonable length limit)
+  // Must not start with a dot (hidden files) or hyphen
+  const SAFE_SESSION_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/;
+  return SAFE_SESSION_ID_PATTERN.test(sessionId);
+}
 
 export interface Todo {
   content: string;
@@ -18,13 +55,24 @@ export interface Todo {
   id?: string;
 }
 
-/** New Claude Code Task system task */
+/**
+ * Claude Code Task system task
+ *
+ * IMPORTANT: This interface is based on observed behavior and the TaskCreate/TaskUpdate
+ * tool schema. The file structure ~/.claude/tasks/{sessionId}/{taskId}.json is inferred
+ * from Claude Code's implementation and may change in future versions.
+ *
+ * As of 2025-01, Anthropic has not published official documentation for the Task system
+ * file format. This implementation should be verified empirically when issues arise.
+ *
+ * @see https://docs.anthropic.com/en/docs/claude-code (check for updates)
+ */
 export interface Task {
   id: string;
   subject: string;
   description?: string;
   activeForm?: string;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'pending' | 'in_progress' | 'completed' | 'deleted';
   blocks?: string[];
   blockedBy?: string[];
 }
@@ -74,8 +122,17 @@ export interface TodoContinuationHook {
 /**
  * Detect if stop was due to user abort (not natural completion)
  *
- * NOTE: These patterns are ASSUMED. Verify against actual Claude Code
- * API responses and update as needed.
+ * WARNING: These patterns are ASSUMED based on common conventions.
+ * As of 2025-01, Anthropic's Stop hook input schema does not document
+ * the exact stop_reason values. The patterns below are educated guesses:
+ *
+ * - user_cancel, user_interrupt: Likely user-initiated via UI
+ * - ctrl_c: Terminal interrupt (Ctrl+C)
+ * - manual_stop: Explicit stop button
+ * - abort, cancel, interrupt: Generic abort patterns
+ *
+ * If the hook fails to detect user aborts correctly, these patterns
+ * should be updated based on observed Claude Code behavior.
  */
 export function isUserAbort(context?: StopContext): boolean {
   if (!context) return false;
@@ -130,8 +187,8 @@ function getTodoFilePaths(sessionId?: string, directory?: string): string[] {
           paths.push(join(todosDir, file));
         }
       }
-    } catch {
-      // Ignore errors reading directory
+    } catch (err) {
+      debugLog('Failed to read todos directory:', todosDir, err);
     }
   }
 
@@ -168,7 +225,8 @@ function parseTodoFile(filePath: string): Todo[] {
     }
 
     return [];
-  } catch {
+  } catch (err) {
+    debugLog('Failed to parse todo file:', filePath, err);
     return [];
   }
 }
@@ -182,8 +240,16 @@ function isIncomplete(todo: Todo): boolean {
 
 /**
  * Get the Task directory for a session
+ *
+ * NOTE: This path (~/.claude/tasks/{sessionId}/) is inferred from Claude Code's
+ * implementation. Anthropic has not officially documented this structure.
+ * The Task files are created by Claude Code's TaskCreate tool.
  */
 export function getTaskDirectory(sessionId: string): string {
+  // Security: validate sessionId before constructing path
+  if (!isValidSessionId(sessionId)) {
+    return ''; // Return empty string for invalid sessions
+  }
   return join(homedir(), '.claude', 'tasks', sessionId);
 }
 
@@ -198,7 +264,8 @@ export function isValidTask(data: unknown): data is Task {
     typeof obj.id === 'string' && obj.id.length > 0 &&
     typeof obj.subject === 'string' && obj.subject.length > 0 &&
     typeof obj.status === 'string' &&
-    ['pending', 'in_progress', 'completed'].includes(obj.status)
+    // Accept 'deleted' as valid - matches Task interface status union type
+    ['pending', 'in_progress', 'completed', 'deleted'].includes(obj.status)
   );
 }
 
@@ -206,34 +273,64 @@ export function isValidTask(data: unknown): data is Task {
  * Read all Task files from a session's task directory
  */
 export function readTaskFiles(sessionId: string): Task[] {
+  if (!isValidSessionId(sessionId)) {
+    return [];
+  }
   const taskDir = getTaskDirectory(sessionId);
-  if (!existsSync(taskDir)) return [];
+  if (!taskDir || !existsSync(taskDir)) return [];
 
   const tasks: Task[] = [];
   try {
     for (const file of readdirSync(taskDir)) {
+      // Skip non-JSON files and .lock file (used by Claude Code for atomic writes)
+      // The .lock file prevents concurrent modifications to task files
       if (!file.endsWith('.json') || file === '.lock') continue;
       try {
         const content = readFileSync(join(taskDir, file), 'utf-8');
         const parsed = JSON.parse(content);
         if (isValidTask(parsed)) tasks.push(parsed);
-      } catch { /* skip invalid files */ }
+      } catch (err) {
+        debugLog('Failed to parse task file:', file, err);
+      }
     }
-  } catch { /* skip directory read errors */ }
+  } catch (err) {
+    debugLog('Failed to read task directory:', sessionId, err);
+  }
   return tasks;
 }
 
 /**
- * Check if a Task is incomplete
+ * Check if a Task is incomplete.
+ *
+ * NOTE: Task system has 3 statuses (pending, in_progress, completed).
+ * The TaskUpdate tool also supports 'deleted' status, but deleted task files
+ * may be removed rather than marked. If a 'deleted' status is encountered,
+ * we treat it as complete (not requiring continuation).
+ *
+ * Unlike legacy todos, Tasks do not have a 'cancelled' status. The Task system
+ * uses 'deleted' for removal, which is handled by file deletion rather than
+ * status change.
  */
 export function isTaskIncomplete(task: Task): boolean {
-  return task.status !== 'completed';
+  // Treat 'completed' and any unknown/deleted status as complete
+  return task.status === 'pending' || task.status === 'in_progress';
 }
 
 /**
  * Check for incomplete tasks in the new Task system
+ *
+ * SYNC NOTICE: This function is intentionally duplicated across:
+ * - templates/hooks/persistent-mode.mjs
+ * - templates/hooks/stop-continuation.mjs
+ * - src/hooks/todo-continuation/index.ts (as checkIncompleteTasks)
+ *
+ * Templates cannot import shared modules (they're standalone scripts).
+ * When modifying this logic, update ALL THREE files to maintain consistency.
  */
 export function checkIncompleteTasks(sessionId: string): TaskCheckResult {
+  if (!isValidSessionId(sessionId)) {
+    return { count: 0, tasks: [], total: 0 };
+  }
   const tasks = readTaskFiles(sessionId);
   const incomplete = tasks.filter(isTaskIncomplete);
   return {
@@ -278,6 +375,15 @@ export function checkLegacyTodos(sessionId?: string, directory?: string): Incomp
 /**
  * Check for incomplete todos/tasks across all possible locations.
  * Checks new Task system first, then falls back to legacy todos.
+ *
+ * Priority Logic:
+ * - If Task system has incomplete items, returns Task count only (source: 'task' or 'both')
+ * - The returned count reflects Tasks only because Tasks are the authoritative source
+ * - Legacy todos are checked to set source='both' for informational purposes
+ * - If no incomplete Tasks exist, returns legacy todo count (source: 'todo')
+ *
+ * Shell templates use a combined count for the "should continue?" decision,
+ * which is correct for that boolean check even if it double-counts.
  */
 export async function checkIncompleteTodos(
   sessionId?: string,
