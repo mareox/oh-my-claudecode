@@ -846,3 +846,13 @@ export {
   type UserDirective
 } from './project-memory/index.js';
 
+export {
+  // Flow Tracer (Agent Flow Trace Recording)
+  recordHookFire,
+  recordHookResult,
+  recordKeywordDetected,
+  recordSkillActivated,
+  recordSkillInvoked,
+  recordModeChange,
+} from './subagent-tracker/flow-tracer.js';
+

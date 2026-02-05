@@ -18,6 +18,7 @@ import {
   statSync,
 } from "fs";
 import { join } from "path";
+import { recordAgentStart, recordAgentStop } from './session-replay.js';
 
 // ============================================================================
 // Types
@@ -465,6 +466,11 @@ export function processSubagentStart(input: SubagentStartInput): HookOutput {
     // Write updated state
     writeTrackingState(input.cwd, state);
 
+    // Record to session replay JSONL for /trace
+    try {
+      recordAgentStart(input.cwd, input.session_id, input.agent_id, input.agent_type, input.prompt, parentMode, input.model);
+    } catch { /* best-effort */ }
+
     // Check for stale agents
     const staleAgents = getStaleAgents(state);
 
@@ -544,6 +550,14 @@ export function processSubagentStop(input: SubagentStopInput): HookOutput {
 
     // Write updated state
     writeTrackingState(input.cwd, state);
+
+    // Record to session replay JSONL for /trace
+    // Fix: SDK doesn't populate agent_type in SubagentStop, so use tracked state
+    try {
+      const trackedAgent = agentIndex !== -1 ? state.agents[agentIndex] : undefined;
+      const agentType = trackedAgent?.agent_type || input.agent_type || 'unknown';
+      recordAgentStop(input.cwd, input.session_id, input.agent_id, agentType, succeeded, trackedAgent?.duration_ms);
+    } catch { /* best-effort */ }
 
     const runningCount = state.agents.filter(
       (a) => a.status === "running",

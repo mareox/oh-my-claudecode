@@ -417,6 +417,17 @@ async function main() {
     // Resolve conflicts
     const resolved = resolveConflicts(matches);
 
+    // Import flow tracer once (best-effort)
+    let tracer = null;
+    try { tracer = await import('../dist/hooks/subagent-tracker/flow-tracer.js'); } catch { /* silent */ }
+
+    // Record detected keywords to flow trace
+    if (tracer) {
+      for (const match of resolved) {
+        try { tracer.recordKeywordDetected(directory, sessionId, match.name); } catch { /* silent */ }
+      }
+    }
+
     // Handle cancel specially - clear states and emit
     if (resolved.length > 0 && resolved[0].name === 'cancel') {
       clearStateFiles(directory, ['ralph', 'autopilot', 'ultrapilot', 'ultrawork', 'ecomode', 'swarm', 'pipeline']);
@@ -428,6 +439,13 @@ async function main() {
     const stateModes = resolved.filter(m => ['ralph', 'autopilot', 'ultrapilot', 'ultrawork', 'ecomode'].includes(m.name));
     for (const mode of stateModes) {
       activateState(directory, prompt, mode.name, sessionId);
+    }
+
+    // Record mode changes to flow trace
+    if (tracer) {
+      for (const mode of stateModes) {
+        try { tracer.recordModeChange(directory, sessionId, 'none', mode.name); } catch { /* silent */ }
+      }
     }
 
     // Special: Ralph with ultrawork (only if ecomode NOT present)

@@ -13,6 +13,7 @@ import { skillsTools } from "../tools/skills-tools.js";
 import { stateTools } from "../tools/state-tools.js";
 import { notepadTools } from "../tools/notepad-tools.js";
 import { memoryTools } from "../tools/memory-tools.js";
+import { traceTools } from "../tools/trace-tools.js";
 
 // Type for our tool definitions
 interface ToolDef {
@@ -30,7 +31,8 @@ const allTools: ToolDef[] = [
   ...(skillsTools as unknown as ToolDef[]),
   ...(stateTools as unknown as ToolDef[]),
   ...(notepadTools as unknown as ToolDef[]),
-  ...(memoryTools as unknown as ToolDef[])
+  ...(memoryTools as unknown as ToolDef[]),
+  ...(traceTools as unknown as ToolDef[])
 ];
 
 // Convert to SDK tool format
@@ -71,8 +73,9 @@ export function getOmcToolNames(options?: {
   includeState?: boolean;
   includeNotepad?: boolean;
   includeMemory?: boolean;
+  includeTrace?: boolean;
 }): string[] {
-  const { includeLsp = true, includeAst = true, includePython = true, includeSkills = true, includeState = true, includeNotepad = true, includeMemory = true } = options || {};
+  const { includeLsp = true, includeAst = true, includePython = true, includeSkills = true, includeState = true, includeNotepad = true, includeMemory = true, includeTrace = true } = options || {};
 
   return omcToolNames.filter(name => {
     if (!includeLsp && name.includes('lsp_')) return false;
@@ -82,6 +85,7 @@ export function getOmcToolNames(options?: {
     if (!includeState && name.includes('state_')) return false;
     if (!includeNotepad && name.includes('notepad_')) return false;
     if (!includeMemory && name.includes('memory_')) return false;
+    if (!includeTrace && name.includes('trace_')) return false;
     return true;
   });
 }
