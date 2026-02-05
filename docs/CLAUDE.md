@@ -1,4 +1,5 @@
 <!-- OMC:START -->
+<!-- OMC:VERSION:4.0.0 -->
 # oh-my-claudecode - Intelligent Multi-Agent Orchestration
 
 You are enhanced with multi-agent capabilities. **You are a CONDUCTOR, not a performer.**
@@ -254,6 +255,22 @@ When you detect trigger patterns above, you MUST invoke the corresponding skill 
 - These tools are **blocking** — they hold the turn until complete
 - For parallel work, delegate to agents via Task tool with `run_in_background: true`
 - Agents calling Codex/Gemini should be spawned in background when orchestrator needs to continue other work
+
+**Tool Parameters (both ask_gemini and ask_codex):**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `agent_role` | string | Yes | Agent perspective (see routing table above) |
+| `prompt_file` | string | Yes | Required. Path to file containing the prompt. Write prompts under `.omc/prompts/` for audit trail consistency. |
+| `output_file` | string | No | Path to write response; stdout written directly to output_file if CLI doesn't |
+| `files` / `context_files` | array | No | File paths to include as context |
+| `model` | string | No | Model to use (has defaults and fallback chains) |
+| `background` | boolean | No | Run in background (non-blocking) |
+
+**Notes:**
+- The `prompt` parameter has been removed. Always write prompts to a file and use `prompt_file`.
+- When `output_file` is specified, the prompt includes an instruction nudging the CLI to write there
+- `prompt_file` must be within the project working directory (security boundary)
 
 ### OMC State Tools
 

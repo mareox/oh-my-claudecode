@@ -13716,18 +13716,41 @@ var import_child_process3 = require("child_process");
 var import_fs4 = require("fs");
 var import_path4 = require("path");
 
-// src/mcp/cli-detection.ts
+// src/lib/worktree-paths.ts
 var import_child_process = require("child_process");
+var import_fs = require("fs");
+var import_path = require("path");
+var worktreeCache = null;
+function getWorktreeRoot(cwd) {
+  const effectiveCwd = cwd || process.cwd();
+  if (worktreeCache && worktreeCache.cwd === effectiveCwd) {
+    return worktreeCache.root;
+  }
+  try {
+    const root = (0, import_child_process.execSync)("git rev-parse --show-toplevel", {
+      cwd: effectiveCwd,
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"]
+    }).trim();
+    worktreeCache = { cwd: effectiveCwd, root };
+    return root;
+  } catch {
+    return effectiveCwd;
+  }
+}
+
+// src/mcp/cli-detection.ts
+var import_child_process2 = require("child_process");
 var codexCache = null;
 function detectCodexCli(useCache = true) {
   if (useCache && codexCache) return codexCache;
   const installHint = "Install Codex CLI: npm install -g @openai/codex";
   try {
     const command = process.platform === "win32" ? "where codex" : "which codex";
-    const path = (0, import_child_process.execSync)(command, { encoding: "utf-8", timeout: 5e3 }).trim();
+    const path = (0, import_child_process2.execSync)(command, { encoding: "utf-8", timeout: 5e3 }).trim();
     let version2;
     try {
-      version2 = (0, import_child_process.execSync)("codex --version", { encoding: "utf-8", timeout: 5e3 }).trim();
+      version2 = (0, import_child_process2.execSync)("codex --version", { encoding: "utf-8", timeout: 5e3 }).trim();
     } catch {
     }
     const result = { available: true, path, version: version2, installHint };
@@ -13745,29 +13768,29 @@ function detectCodexCli(useCache = true) {
 }
 
 // src/agents/utils.ts
-var import_fs = require("fs");
-var import_path = require("path");
+var import_fs2 = require("fs");
+var import_path2 = require("path");
 var import_url = require("url");
 var import_meta = {};
 function getPackageDir() {
   const __filename = (0, import_url.fileURLToPath)(import_meta.url);
-  const __dirname = (0, import_path.dirname)(__filename);
-  return (0, import_path.join)(__dirname, "..", "..");
+  const __dirname = (0, import_path2.dirname)(__filename);
+  return (0, import_path2.join)(__dirname, "..", "..");
 }
 function loadAgentPrompt(agentName) {
   if (!/^[a-z0-9-]+$/i.test(agentName)) {
     throw new Error(`Invalid agent name: contains disallowed characters`);
   }
   try {
-    const agentsDir = (0, import_path.join)(getPackageDir(), "agents");
-    const agentPath = (0, import_path.join)(agentsDir, `${agentName}.md`);
-    const resolvedPath = (0, import_path.resolve)(agentPath);
-    const resolvedAgentsDir = (0, import_path.resolve)(agentsDir);
-    const rel = (0, import_path.relative)(resolvedAgentsDir, resolvedPath);
-    if (rel.startsWith("..") || (0, import_path.isAbsolute)(rel)) {
+    const agentsDir = (0, import_path2.join)(getPackageDir(), "agents");
+    const agentPath = (0, import_path2.join)(agentsDir, `${agentName}.md`);
+    const resolvedPath = (0, import_path2.resolve)(agentPath);
+    const resolvedAgentsDir = (0, import_path2.resolve)(agentsDir);
+    const rel = (0, import_path2.relative)(resolvedAgentsDir, resolvedPath);
+    if (rel.startsWith("..") || (0, import_path2.isAbsolute)(rel)) {
       throw new Error(`Invalid agent name: path traversal detected`);
     }
-    const content = (0, import_fs.readFileSync)(agentPath, "utf-8");
+    const content = (0, import_fs2.readFileSync)(agentPath, "utf-8");
     const match = content.match(/^---[\s\S]*?---\s*([\s\S]*)$/);
     return match ? match[1].trim() : content.trim();
   } catch (error2) {
@@ -13813,31 +13836,6 @@ ${systemPrompt}
 var import_fs3 = require("fs");
 var import_path3 = require("path");
 var import_crypto = require("crypto");
-
-// src/lib/worktree-paths.ts
-var import_child_process2 = require("child_process");
-var import_fs2 = require("fs");
-var import_path2 = require("path");
-var worktreeCache = null;
-function getWorktreeRoot(cwd) {
-  const effectiveCwd = cwd || process.cwd();
-  if (worktreeCache && worktreeCache.cwd === effectiveCwd) {
-    return worktreeCache.root;
-  }
-  try {
-    const root = (0, import_child_process2.execSync)("git rev-parse --show-toplevel", {
-      cwd: effectiveCwd,
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"]
-    }).trim();
-    worktreeCache = { cwd: effectiveCwd, root };
-    return root;
-  } catch {
-    return effectiveCwd;
-  }
-}
-
-// src/mcp/prompt-persistence.ts
 function yamlString(value) {
   return JSON.stringify(value);
 }
@@ -13869,8 +13867,8 @@ function slugify(text, maxWords = 4) {
 function generatePromptId() {
   return (0, import_crypto.randomBytes)(4).toString("hex");
 }
-function getPromptsDir() {
-  const root = getWorktreeRoot() || process.cwd();
+function getPromptsDir(workingDirectory) {
+  const root = getWorktreeRoot(workingDirectory) || workingDirectory || process.cwd();
   return (0, import_path3.join)(root, ".omc", "prompts");
 }
 function buildPromptFrontmatter(options) {
@@ -13908,7 +13906,7 @@ function buildResponseFrontmatter(options) {
 }
 function persistPrompt(options) {
   try {
-    const promptsDir = getPromptsDir();
+    const promptsDir = getPromptsDir(options.workingDirectory);
     (0, import_fs3.mkdirSync)(promptsDir, { recursive: true });
     const slug = slugify(options.prompt);
     const id = generatePromptId();
@@ -13925,14 +13923,14 @@ ${options.fullPrompt}`;
     return void 0;
   }
 }
-function getExpectedResponsePath(provider, slug, promptId) {
-  const promptsDir = getPromptsDir();
+function getExpectedResponsePath(provider, slug, promptId, workingDirectory) {
+  const promptsDir = getPromptsDir(workingDirectory);
   const filename = `${provider}-response-${slug}-${promptId}.md`;
   return (0, import_path3.join)(promptsDir, filename);
 }
 function persistResponse(options) {
   try {
-    const promptsDir = getPromptsDir();
+    const promptsDir = getPromptsDir(options.workingDirectory);
     (0, import_fs3.mkdirSync)(promptsDir, { recursive: true });
     const filename = `${options.provider}-response-${options.slug}-${options.promptId}.md`;
     const filePath = (0, import_path3.join)(promptsDir, filename);
@@ -13947,20 +13945,80 @@ ${options.response}`;
     return void 0;
   }
 }
-function getStatusFilePath(provider, slug, promptId) {
-  const promptsDir = getPromptsDir();
+function getStatusFilePath(provider, slug, promptId, workingDirectory) {
+  const promptsDir = getPromptsDir(workingDirectory);
   return (0, import_path3.join)(promptsDir, `${provider}-status-${slug}-${promptId}.json`);
 }
-function writeJobStatus(status) {
+function writeJobStatus(status, workingDirectory) {
   try {
-    const promptsDir = getPromptsDir();
+    const promptsDir = getPromptsDir(workingDirectory);
     (0, import_fs3.mkdirSync)(promptsDir, { recursive: true });
-    const statusPath = getStatusFilePath(status.provider, status.slug, status.jobId);
+    const statusPath = getStatusFilePath(status.provider, status.slug, status.jobId, workingDirectory);
     const tempPath = statusPath + ".tmp";
     (0, import_fs3.writeFileSync)(tempPath, JSON.stringify(status, null, 2), "utf-8");
     renameOverwritingSync(tempPath, statusPath);
   } catch (err) {
     console.warn(`[prompt-persistence] Failed to write job status: ${err.message}`);
+  }
+}
+function readJobStatus(provider, slug, promptId, workingDirectory) {
+  const statusPath = getStatusFilePath(provider, slug, promptId, workingDirectory);
+  if (!(0, import_fs3.existsSync)(statusPath)) {
+    return void 0;
+  }
+  try {
+    const content = (0, import_fs3.readFileSync)(statusPath, "utf-8");
+    return JSON.parse(content);
+  } catch {
+    return void 0;
+  }
+}
+function readCompletedResponse(provider, slug, promptId, workingDirectory) {
+  const responsePath = getExpectedResponsePath(provider, slug, promptId, workingDirectory);
+  if (!(0, import_fs3.existsSync)(responsePath)) {
+    return void 0;
+  }
+  const status = readJobStatus(provider, slug, promptId, workingDirectory);
+  if (!status) {
+    return void 0;
+  }
+  try {
+    const content = (0, import_fs3.readFileSync)(responsePath, "utf-8");
+    const frontmatterMatch = content.match(/^---\n[\s\S]*?\n---\n\n/);
+    const response = frontmatterMatch ? content.slice(frontmatterMatch[0].length) : content;
+    return { response, status };
+  } catch {
+    return void 0;
+  }
+}
+function listActiveJobs(provider, workingDirectory) {
+  const promptsDir = getPromptsDir(workingDirectory);
+  if (!(0, import_fs3.existsSync)(promptsDir)) {
+    return [];
+  }
+  try {
+    const files = (0, import_fs3.readdirSync)(promptsDir);
+    const statusFiles = files.filter((f) => {
+      if (!f.endsWith(".json")) return false;
+      if (provider) {
+        return f.startsWith(`${provider}-status-`);
+      }
+      return f.includes("-status-");
+    });
+    const activeJobs = [];
+    for (const file of statusFiles) {
+      try {
+        const content = (0, import_fs3.readFileSync)((0, import_path3.join)(promptsDir, file), "utf-8");
+        const status = JSON.parse(content);
+        if (status.status === "spawned" || status.status === "running") {
+          activeJobs.push(status);
+        }
+      } catch {
+      }
+    }
+    return activeJobs;
+  } catch {
+    return [];
   }
 }
 
@@ -13995,12 +14053,13 @@ function parseCodexOutput(output) {
   }
   return messages.join("\n") || output;
 }
-function executeCodex(prompt, model) {
+function executeCodex(prompt, model, cwd) {
   return new Promise((resolve4, reject) => {
     let settled = false;
     const args = ["exec", "-m", model, "--json", "--full-auto"];
     const child = (0, import_child_process3.spawn)("codex", args, {
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
+      ...cwd ? { cwd } : {}
     });
     const timeoutHandle = setTimeout(() => {
       if (!settled) {
@@ -14048,12 +14107,13 @@ function executeCodex(prompt, model) {
     child.stdin.end();
   });
 }
-function executeCodexBackground(fullPrompt, model, jobMeta) {
+function executeCodexBackground(fullPrompt, model, jobMeta, workingDirectory) {
   try {
     const args = ["exec", "-m", model, "--json", "--full-auto"];
     const child = (0, import_child_process3.spawn)("codex", args, {
       detached: true,
-      stdio: ["pipe", "pipe", "pipe"]
+      stdio: ["pipe", "pipe", "pipe"],
+      ...workingDirectory ? { cwd: workingDirectory } : {}
     });
     if (!child.pid) {
       return { error: "Failed to get process ID" };
@@ -14072,7 +14132,7 @@ function executeCodexBackground(fullPrompt, model, jobMeta) {
       agentRole: jobMeta.agentRole,
       spawnedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    writeJobStatus(initialStatus);
+    writeJobStatus(initialStatus, workingDirectory);
     let stdout = "";
     let stderr = "";
     let settled = false;
@@ -14089,7 +14149,7 @@ function executeCodexBackground(fullPrompt, model, jobMeta) {
           status: "timeout",
           completedAt: (/* @__PURE__ */ new Date()).toISOString(),
           error: `Codex timed out after ${CODEX_TIMEOUT}ms`
-        });
+        }, workingDirectory);
       }
     }, CODEX_TIMEOUT);
     child.stdout?.on("data", (data) => {
@@ -14107,15 +14167,19 @@ function executeCodexBackground(fullPrompt, model, jobMeta) {
         status: "failed",
         completedAt: (/* @__PURE__ */ new Date()).toISOString(),
         error: `Stdin write error: ${err.message}`
-      });
+      }, workingDirectory);
     });
     child.stdin?.write(fullPrompt);
     child.stdin?.end();
-    writeJobStatus({ ...initialStatus, status: "running" });
+    writeJobStatus({ ...initialStatus, status: "running" }, workingDirectory);
     child.on("close", (code) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeoutHandle);
+      const currentStatus = readJobStatus("codex", jobMeta.slug, jobMeta.jobId);
+      if (currentStatus?.killedByUser) {
+        return;
+      }
       if (code === 0 || stdout.trim()) {
         const response = parseCodexOutput(stdout);
         persistResponse({
@@ -14124,20 +14188,21 @@ function executeCodexBackground(fullPrompt, model, jobMeta) {
           model,
           promptId: jobMeta.jobId,
           slug: jobMeta.slug,
-          response
+          response,
+          workingDirectory
         });
         writeJobStatus({
           ...initialStatus,
           status: "completed",
           completedAt: (/* @__PURE__ */ new Date()).toISOString()
-        });
+        }, workingDirectory);
       } else {
         writeJobStatus({
           ...initialStatus,
           status: "failed",
           completedAt: (/* @__PURE__ */ new Date()).toISOString(),
           error: `Codex exited with code ${code}: ${stderr || "No output"}`
-        });
+        }, workingDirectory);
       }
     });
     child.on("error", (err) => {
@@ -14149,21 +14214,21 @@ function executeCodexBackground(fullPrompt, model, jobMeta) {
         status: "failed",
         completedAt: (/* @__PURE__ */ new Date()).toISOString(),
         error: `Failed to spawn Codex CLI: ${err.message}`
-      });
+      }, workingDirectory);
     });
     return { pid };
   } catch (err) {
     return { error: `Failed to start background execution: ${err.message}` };
   }
 }
-function validateAndReadFile(filePath) {
+function validateAndReadFile(filePath, baseDir) {
   if (typeof filePath !== "string") {
     return `--- File: ${filePath} --- (Invalid path type)`;
   }
   try {
-    const resolvedAbs = (0, import_path4.resolve)(filePath);
-    const cwd = process.cwd();
-    const cwdReal = (0, import_fs4.realpathSync)(cwd);
+    const workingDir = baseDir || process.cwd();
+    const resolvedAbs = (0, import_path4.resolve)(workingDir, filePath);
+    const cwdReal = (0, import_fs4.realpathSync)(workingDir);
     const relAbs = (0, import_path4.relative)(cwdReal, resolvedAbs);
     if (relAbs === "" || relAbs === ".." || relAbs.startsWith(".." + import_path4.sep)) {
       return `[BLOCKED] File '${filePath}' is outside the working directory. Only files within the project are allowed.`;
@@ -14187,7 +14252,31 @@ ${(0, import_fs4.readFileSync)(resolvedReal, "utf-8")}`;
   }
 }
 async function handleAskCodex(args) {
-  const { prompt, agent_role, model = CODEX_DEFAULT_MODEL, context_files } = args;
+  const { agent_role, model = CODEX_DEFAULT_MODEL, context_files } = args;
+  const trustedRoot = getWorktreeRoot(process.cwd()) || process.cwd();
+  let trustedRootReal;
+  try {
+    trustedRootReal = (0, import_fs4.realpathSync)(trustedRoot);
+  } catch {
+    trustedRootReal = trustedRoot;
+  }
+  let baseDir = args.working_directory || process.cwd();
+  let baseDirReal;
+  try {
+    baseDirReal = (0, import_fs4.realpathSync)(baseDir);
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `working_directory '${args.working_directory}' does not exist or is not accessible: ${err.message}` }],
+      isError: true
+    };
+  }
+  const relToRoot = (0, import_path4.relative)(trustedRootReal, baseDirReal);
+  if (relToRoot.startsWith("..") || (0, import_path4.isAbsolute)(relToRoot)) {
+    return {
+      content: [{ type: "text", text: `working_directory '${args.working_directory}' is outside the trusted worktree root '${trustedRoot}'.` }],
+      isError: true
+    };
+  }
   if (!agent_role || !CODEX_VALID_ROLES.includes(agent_role)) {
     return {
       content: [{
@@ -14196,6 +14285,71 @@ async function handleAskCodex(args) {
       }],
       isError: true
     };
+  }
+  if (!args.output_file || !args.output_file.trim()) {
+    return {
+      content: [{ type: "text", text: "output_file is required. Specify a path where the response should be written." }],
+      isError: true
+    };
+  }
+  if ("prompt" in args) {
+    return {
+      content: [{ type: "text", text: "The 'prompt' parameter has been removed. Write the prompt to a file (recommended: .omc/prompts/) and pass 'prompt_file' instead." }],
+      isError: true
+    };
+  }
+  if (!args.prompt_file || !args.prompt_file.trim()) {
+    return {
+      content: [{ type: "text", text: "prompt_file is required." }],
+      isError: true
+    };
+  }
+  let resolvedPrompt;
+  const resolvedPath = (0, import_path4.resolve)(baseDir, args.prompt_file);
+  const cwdReal = (0, import_fs4.realpathSync)(baseDir);
+  const relPath = (0, import_path4.relative)(cwdReal, resolvedPath);
+  if (relPath === "" || relPath === ".." || relPath.startsWith(".." + import_path4.sep)) {
+    return {
+      content: [{ type: "text", text: `prompt_file '${args.prompt_file}' is outside the working directory.` }],
+      isError: true
+    };
+  }
+  let resolvedReal;
+  try {
+    resolvedReal = (0, import_fs4.realpathSync)(resolvedPath);
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Failed to resolve prompt_file '${args.prompt_file}': ${err.message}` }],
+      isError: true
+    };
+  }
+  const relReal = (0, import_path4.relative)(cwdReal, resolvedReal);
+  if (relReal === "" || relReal === ".." || relReal.startsWith(".." + import_path4.sep)) {
+    return {
+      content: [{ type: "text", text: `prompt_file '${args.prompt_file}' resolves to a path outside the working directory.` }],
+      isError: true
+    };
+  }
+  try {
+    resolvedPrompt = (0, import_fs4.readFileSync)(resolvedReal, "utf-8");
+  } catch (err) {
+    return {
+      content: [{ type: "text", text: `Failed to read prompt_file '${args.prompt_file}': ${err.message}` }],
+      isError: true
+    };
+  }
+  if (!resolvedPrompt.trim()) {
+    return {
+      content: [{ type: "text", text: `prompt_file '${args.prompt_file}' is empty.` }],
+      isError: true
+    };
+  }
+  let userPrompt = resolvedPrompt;
+  if (args.output_file) {
+    const outputPath = (0, import_path4.resolve)(baseDir, args.output_file);
+    userPrompt = `IMPORTANT: Write your complete response to the file: ${outputPath}
+
+${resolvedPrompt}`;
   }
   const detection = detectCodexCli();
   if (!detection.available) {
@@ -14221,18 +14375,19 @@ ${detection.installHint}`
         isError: true
       };
     }
-    fileContext = context_files.map((f) => validateAndReadFile(f)).join("\n\n");
+    fileContext = context_files.map((f) => validateAndReadFile(f, baseDir)).join("\n\n");
   }
-  const fullPrompt = buildPromptWithSystemContext(prompt, fileContext, resolvedSystemPrompt);
+  const fullPrompt = buildPromptWithSystemContext(userPrompt, fileContext, resolvedSystemPrompt);
   const promptResult = persistPrompt({
     provider: "codex",
     agentRole: agent_role,
     model,
     files: context_files,
-    prompt,
-    fullPrompt
+    prompt: resolvedPrompt,
+    fullPrompt,
+    workingDirectory: baseDir
   });
-  const expectedResponsePath = promptResult ? getExpectedResponsePath("codex", promptResult.slug, promptResult.id) : void 0;
+  const expectedResponsePath = promptResult ? getExpectedResponsePath("codex", promptResult.slug, promptResult.id, baseDir) : void 0;
   if (args.background) {
     if (!promptResult) {
       return {
@@ -14240,7 +14395,7 @@ ${detection.installHint}`
         isError: true
       };
     }
-    const statusFilePath = getStatusFilePath("codex", promptResult.slug, promptResult.id);
+    const statusFilePath = getStatusFilePath("codex", promptResult.slug, promptResult.id, baseDir);
     const result = executeCodexBackground(fullPrompt, model, {
       provider: "codex",
       jobId: promptResult.id,
@@ -14249,7 +14404,7 @@ ${detection.installHint}`
       model,
       promptFile: promptResult.filePath,
       responseFile: expectedResponsePath
-    });
+    }, baseDir);
     if ("error" in result) {
       return {
         content: [{ type: "text", text: `Failed to spawn background job: ${result.error}` }],
@@ -14281,7 +14436,7 @@ ${detection.installHint}`
     expectedResponsePath ? `**Response File:** ${expectedResponsePath}` : null
   ].filter(Boolean).join("\n");
   try {
-    const response = await executeCodex(fullPrompt, model);
+    const response = await executeCodex(fullPrompt, model, baseDir);
     if (promptResult) {
       persistResponse({
         provider: "codex",
@@ -14289,17 +14444,49 @@ ${detection.installHint}`
         model,
         promptId: promptResult.id,
         slug: promptResult.slug,
-        response
+        response,
+        workingDirectory: baseDir
       });
+    }
+    if (args.output_file) {
+      const outputPath = (0, import_path4.resolve)(baseDirReal, args.output_file);
+      const relOutput = (0, import_path4.relative)(trustedRootReal, outputPath);
+      if (relOutput === "" || relOutput.startsWith("..") || (0, import_path4.isAbsolute)(relOutput)) {
+        console.warn(`[codex-core] output_file '${args.output_file}' resolves outside trusted root, skipping write.`);
+      } else {
+        try {
+          const outputDir = (0, import_path4.dirname)(outputPath);
+          if (!(0, import_fs4.existsSync)(outputDir)) {
+            const relDir = (0, import_path4.relative)(trustedRootReal, outputDir);
+            if (relDir.startsWith("..") || (0, import_path4.isAbsolute)(relDir)) {
+              console.warn(`[codex-core] output_file directory is outside trusted root, skipping write.`);
+            } else {
+              (0, import_fs4.mkdirSync)(outputDir, { recursive: true });
+            }
+          }
+          let outputDirReal;
+          try {
+            outputDirReal = (0, import_fs4.realpathSync)(outputDir);
+          } catch {
+            console.warn(`[codex-core] Failed to resolve output directory, skipping write.`);
+          }
+          if (outputDirReal) {
+            const relDirReal = (0, import_path4.relative)(trustedRootReal, outputDirReal);
+            if (relDirReal.startsWith("..") || (0, import_path4.isAbsolute)(relDirReal)) {
+              console.warn(`[codex-core] output_file directory resolves outside trusted root, skipping write.`);
+            } else {
+              (0, import_fs4.writeFileSync)(outputPath, response, "utf-8");
+            }
+          }
+        } catch (err) {
+          console.warn(`[codex-core] Failed to write output file: ${err.message}`);
+        }
+      }
     }
     return {
       content: [{
         type: "text",
-        text: `${paramLines}
-
----
-
-${response}`
+        text: paramLines
       }]
     };
   } catch (err) {
@@ -14317,6 +14504,369 @@ Codex CLI error: ${err.message}`
   }
 }
 
+// src/mcp/job-management.ts
+var import_fs5 = require("fs");
+var import_path5 = require("path");
+var ALLOWED_SIGNALS = /* @__PURE__ */ new Set(["SIGTERM", "SIGINT"]);
+function escapeRegex2(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function textResult(text, isError = false) {
+  return {
+    content: [{ type: "text", text }],
+    ...isError && { isError: true }
+  };
+}
+function findJobStatusFile(provider, jobId) {
+  if (!/^[0-9a-f]{8}$/i.test(jobId)) {
+    return void 0;
+  }
+  const promptsDir = getPromptsDir();
+  if (!(0, import_fs5.existsSync)(promptsDir)) return void 0;
+  try {
+    const files = (0, import_fs5.readdirSync)(promptsDir);
+    const escapedProvider = escapeRegex2(provider);
+    const escapedJobId = escapeRegex2(jobId);
+    const pattern = new RegExp(`^${escapedProvider}-status-(.+)-${escapedJobId}\\.json$`);
+    const matches = [];
+    for (const f of files) {
+      const m = f.match(pattern);
+      if (m) {
+        matches.push({
+          file: f,
+          slug: m[1],
+          statusPath: (0, import_path5.join)(promptsDir, f)
+        });
+      }
+    }
+    if (matches.length === 0) return void 0;
+    if (matches.length === 1) {
+      return { statusPath: matches[0].statusPath, slug: matches[0].slug };
+    }
+    let best;
+    for (const match of matches) {
+      try {
+        const content = (0, import_fs5.readFileSync)(match.statusPath, "utf-8");
+        const status = JSON.parse(content);
+        const isActive = status.status === "spawned" || status.status === "running";
+        const spawnedAt = new Date(status.spawnedAt).getTime();
+        if (!best || isActive && !best.isActive || isActive === best.isActive && spawnedAt > best.spawnedAt) {
+          best = { statusPath: match.statusPath, slug: match.slug, isActive, spawnedAt };
+        }
+      } catch {
+      }
+    }
+    if (best) {
+      return { statusPath: best.statusPath, slug: best.slug };
+    }
+    return { statusPath: matches[0].statusPath, slug: matches[0].slug };
+  } catch {
+    return void 0;
+  }
+}
+async function handleWaitForJob(provider, jobId, timeoutMs = 36e5) {
+  if (!jobId || typeof jobId !== "string") {
+    return textResult("job_id is required.", true);
+  }
+  const effectiveTimeout = Math.max(1e3, Math.min(timeoutMs, 36e5));
+  const deadline = Date.now() + effectiveTimeout;
+  let pollDelay = 500;
+  while (Date.now() < deadline) {
+    const found = findJobStatusFile(provider, jobId);
+    if (!found) {
+      return textResult(`No job found with ID: ${jobId}`, true);
+    }
+    const status = readJobStatus(provider, found.slug, jobId);
+    if (!status) {
+      return textResult(`No job found with ID: ${jobId}`, true);
+    }
+    if (status.status === "completed" || status.status === "failed" || status.status === "timeout") {
+      if (status.status === "completed") {
+        const completed = readCompletedResponse(status.provider, status.slug, status.jobId);
+        const responseSnippet = completed ? completed.response.substring(0, 500) + (completed.response.length > 500 ? "..." : "") : "(response file not found)";
+        return textResult([
+          `**Job ${jobId} completed.**`,
+          `**Provider:** ${status.provider}`,
+          `**Model:** ${status.model}`,
+          `**Agent Role:** ${status.agentRole}`,
+          `**Response File:** ${status.responseFile}`,
+          status.usedFallback ? `**Fallback Model:** ${status.fallbackModel}` : null,
+          ``,
+          `**Response preview:**`,
+          responseSnippet
+        ].filter(Boolean).join("\n"));
+      }
+      return textResult([
+        `**Job ${jobId} ${status.status}.**`,
+        `**Provider:** ${status.provider}`,
+        `**Model:** ${status.model}`,
+        `**Agent Role:** ${status.agentRole}`,
+        status.error ? `**Error:** ${status.error}` : null
+      ].filter(Boolean).join("\n"), true);
+    }
+    await new Promise((resolve4) => setTimeout(resolve4, pollDelay));
+    pollDelay = Math.min(pollDelay * 1.5, 2e3);
+  }
+  return textResult(
+    `Timed out waiting for job ${jobId} after ${timeoutMs}ms. The job is still running; use check_job_status to poll later.`,
+    true
+  );
+}
+async function handleCheckJobStatus(provider, jobId) {
+  if (!jobId || typeof jobId !== "string") {
+    return textResult("job_id is required.", true);
+  }
+  const found = findJobStatusFile(provider, jobId);
+  if (!found) {
+    return textResult(`No job found with ID: ${jobId}`, true);
+  }
+  const status = readJobStatus(provider, found.slug, jobId);
+  if (!status) {
+    return textResult(`No job found with ID: ${jobId}`, true);
+  }
+  const lines = [
+    `**Job ID:** ${status.jobId}`,
+    `**Provider:** ${status.provider}`,
+    `**Status:** ${status.status}`,
+    `**Model:** ${status.model}`,
+    `**Agent Role:** ${status.agentRole}`,
+    `**Spawned At:** ${status.spawnedAt}`,
+    status.completedAt ? `**Completed At:** ${status.completedAt}` : null,
+    status.pid ? `**PID:** ${status.pid}` : null,
+    `**Prompt File:** ${status.promptFile}`,
+    `**Response File:** ${status.responseFile}`,
+    status.error ? `**Error:** ${status.error}` : null,
+    status.usedFallback ? `**Fallback Model:** ${status.fallbackModel}` : null,
+    status.killedByUser ? `**Killed By User:** yes` : null
+  ];
+  return textResult(lines.filter(Boolean).join("\n"));
+}
+async function handleKillJob(provider, jobId, signal = "SIGTERM") {
+  if (!jobId || typeof jobId !== "string") {
+    return textResult("job_id is required.", true);
+  }
+  if (!ALLOWED_SIGNALS.has(signal)) {
+    return textResult(
+      `Invalid signal: ${signal}. Allowed signals: ${[...ALLOWED_SIGNALS].join(", ")}`,
+      true
+    );
+  }
+  const found = findJobStatusFile(provider, jobId);
+  if (!found) {
+    return textResult(`No job found with ID: ${jobId}`, true);
+  }
+  const status = readJobStatus(provider, found.slug, jobId);
+  if (!status) {
+    return textResult(`No job found with ID: ${jobId}`, true);
+  }
+  if (status.status !== "spawned" && status.status !== "running") {
+    return textResult(
+      `Job ${jobId} is already in terminal state: ${status.status}. Cannot kill.`,
+      true
+    );
+  }
+  if (!status.pid) {
+    return textResult(
+      `Job ${jobId} has no PID recorded. Cannot send signal.`,
+      true
+    );
+  }
+  const updated = {
+    ...status,
+    killedByUser: true
+  };
+  writeJobStatus(updated);
+  try {
+    if (process.platform !== "win32") {
+      process.kill(-status.pid, signal);
+    } else {
+      process.kill(status.pid, signal);
+    }
+    writeJobStatus({
+      ...updated,
+      status: "failed",
+      killedByUser: true,
+      completedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      error: `Killed by user (signal: ${signal})`
+    });
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await new Promise((resolve4) => setTimeout(resolve4, 50));
+      const recheckStatus = readJobStatus(provider, found.slug, jobId);
+      if (!recheckStatus || recheckStatus.status === "failed") {
+        break;
+      }
+      writeJobStatus({
+        ...recheckStatus,
+        status: "failed",
+        killedByUser: true,
+        completedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        error: `Killed by user (signal: ${signal})`
+      });
+    }
+    return textResult(
+      `Sent ${signal} to job ${jobId} (PID ${status.pid}). Job marked as failed.`
+    );
+  } catch (err) {
+    const currentStatus = readJobStatus(provider, found.slug, jobId);
+    const isESRCH = err.code === "ESRCH";
+    let message;
+    if (isESRCH) {
+      if (currentStatus?.status === "completed") {
+        message = `Process ${status.pid} already exited. Job ${jobId} completed successfully.`;
+      } else {
+        message = `Process ${status.pid} already exited.`;
+        writeJobStatus({
+          ...currentStatus || updated,
+          status: "failed",
+          killedByUser: true,
+          completedAt: (/* @__PURE__ */ new Date()).toISOString(),
+          error: `Killed by user (process already exited, signal: ${signal})`
+        });
+      }
+    } else {
+      message = `Failed to kill process ${status.pid}: ${err.message}`;
+    }
+    return textResult(message, !isESRCH || currentStatus?.status !== "completed");
+  }
+}
+async function handleListJobs(provider, statusFilter = "active", limit = 50) {
+  if (statusFilter === "active") {
+    const activeJobs = listActiveJobs(provider);
+    if (activeJobs.length === 0) {
+      return textResult(`No active ${provider} jobs found.`);
+    }
+    activeJobs.sort((a, b) => new Date(b.spawnedAt).getTime() - new Date(a.spawnedAt).getTime());
+    const limited = activeJobs.slice(0, limit);
+    const lines = limited.map((job) => {
+      const parts = [
+        `- **${job.jobId}** [${job.status}] ${job.provider}/${job.model} (${job.agentRole})`,
+        `  Spawned: ${job.spawnedAt}`
+      ];
+      if (job.pid) parts.push(`  PID: ${job.pid}`);
+      return parts.join("\n");
+    });
+    return textResult(`**${limited.length} active ${provider} job(s):**
+
+${lines.join("\n\n")}`);
+  }
+  const promptsDir = getPromptsDir();
+  if (!(0, import_fs5.existsSync)(promptsDir)) {
+    return textResult(`No ${provider} jobs found.`);
+  }
+  try {
+    const files = (0, import_fs5.readdirSync)(promptsDir);
+    const statusFiles = files.filter(
+      (f) => f.startsWith(`${provider}-status-`) && f.endsWith(".json")
+    );
+    const jobs = [];
+    for (const file of statusFiles) {
+      try {
+        const content = (0, import_fs5.readFileSync)((0, import_path5.join)(promptsDir, file), "utf-8");
+        const job = JSON.parse(content);
+        if (statusFilter === "completed" && job.status !== "completed") continue;
+        if (statusFilter === "failed" && job.status !== "failed" && job.status !== "timeout") continue;
+        jobs.push(job);
+      } catch {
+      }
+    }
+    if (jobs.length === 0) {
+      const filterDesc = statusFilter !== "all" ? ` with status=${statusFilter}` : "";
+      return textResult(`No ${provider} jobs found${filterDesc}.`);
+    }
+    jobs.sort((a, b) => new Date(b.spawnedAt).getTime() - new Date(a.spawnedAt).getTime());
+    const limited = jobs.slice(0, limit);
+    const lines = limited.map((job) => {
+      const parts = [
+        `- **${job.jobId}** [${job.status}] ${job.provider}/${job.model} (${job.agentRole})`,
+        `  Spawned: ${job.spawnedAt}`
+      ];
+      if (job.completedAt) parts.push(`  Completed: ${job.completedAt}`);
+      if (job.error) parts.push(`  Error: ${job.error}`);
+      if (job.pid) parts.push(`  PID: ${job.pid}`);
+      return parts.join("\n");
+    });
+    return textResult(`**${limited.length} ${provider} job(s) found:**
+
+${lines.join("\n\n")}`);
+  } catch (err) {
+    return textResult(`Error listing jobs: ${err.message}`, true);
+  }
+}
+function getJobManagementToolSchemas(_provider) {
+  return [
+    {
+      name: "wait_for_job",
+      description: "Block (poll) until a background job reaches a terminal state (completed, failed, or timeout). Uses exponential backoff. Returns the response preview on success. WARNING: This tool blocks the MCP server for the duration of the poll. Prefer check_job_status for non-blocking status checks.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          job_id: {
+            type: "string",
+            description: "The job ID returned when the background job was dispatched."
+          },
+          timeout_ms: {
+            type: "number",
+            description: "Maximum time to wait in milliseconds (default: 3600000, max: 3600000)."
+          }
+        },
+        required: ["job_id"]
+      }
+    },
+    {
+      name: "check_job_status",
+      description: "Non-blocking status check for a background job. Returns current status, metadata, and error information if available.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          job_id: {
+            type: "string",
+            description: "The job ID returned when the background job was dispatched."
+          }
+        },
+        required: ["job_id"]
+      }
+    },
+    {
+      name: "kill_job",
+      description: "Send a signal to a running background job. Marks the job as failed. Only works on jobs in spawned or running state.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          job_id: {
+            type: "string",
+            description: "The job ID of the running job to kill."
+          },
+          signal: {
+            type: "string",
+            enum: ["SIGTERM", "SIGINT"],
+            description: "The signal to send (default: SIGTERM). Only SIGTERM and SIGINT are allowed."
+          }
+        },
+        required: ["job_id"]
+      }
+    },
+    {
+      name: "list_jobs",
+      description: "List background jobs for this provider. Filter by status and limit results. Results sorted newest first.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          status_filter: {
+            type: "string",
+            enum: ["active", "completed", "failed", "all"],
+            description: "Filter jobs by status (default: active)."
+          },
+          limit: {
+            type: "number",
+            description: "Maximum number of jobs to return (default: 50)."
+          }
+        },
+        required: []
+      }
+    }
+  ];
+}
+
 // src/mcp/codex-standalone-server.ts
 var askCodexTool = {
   name: "ask_codex",
@@ -14329,28 +14879,47 @@ var askCodexTool = {
         enum: CODEX_VALID_ROLES,
         description: `Required. Agent perspective for Codex: ${CODEX_VALID_ROLES.join(", ")}. Codex is optimized for analytical/planning tasks.`
       },
+      prompt_file: { type: "string", description: "Path to file containing the prompt" },
+      output_file: { type: "string", description: "Required. Path to write response. Response content is NOT returned inline - read from this file." },
       context_files: { type: "array", items: { type: "string" }, description: "File paths to include as context (contents will be prepended to prompt)" },
-      prompt: { type: "string", description: "The prompt to send to Codex" },
       model: { type: "string", description: `Codex model to use (default: ${CODEX_DEFAULT_MODEL}). Set OMC_CODEX_DEFAULT_MODEL env var to change default.` },
-      background: { type: "boolean", description: "Run in background (non-blocking). Returns immediately with job metadata and file paths. Check response file for completion." }
+      background: { type: "boolean", description: "Run in background (non-blocking). Returns immediately with job metadata and file paths. Check response file for completion." },
+      working_directory: { type: "string", description: "Working directory for path resolution and CLI execution. Defaults to process.cwd()." }
     },
-    required: ["prompt", "agent_role"]
+    required: ["agent_role", "prompt_file", "output_file"]
   }
 };
+var jobTools = getJobManagementToolSchemas("codex");
 var server = new Server(
   { name: "x", version: "1.0.0" },
   { capabilities: { tools: {} } }
 );
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
-  tools: [askCodexTool]
+  tools: [askCodexTool, ...jobTools]
 }));
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
-  if (name !== "ask_codex") {
-    return { content: [{ type: "text", text: `Unknown tool: ${name}` }], isError: true };
+  if (name === "ask_codex") {
+    const { prompt_file, output_file, agent_role, model, context_files, background, working_directory } = args ?? {};
+    return handleAskCodex({ prompt_file, output_file, agent_role, model, context_files, background, working_directory });
   }
-  const { prompt, agent_role, model, context_files, background } = args ?? {};
-  return handleAskCodex({ prompt, agent_role, model, context_files, background });
+  if (name === "wait_for_job") {
+    const { job_id, timeout_ms } = args ?? {};
+    return handleWaitForJob("codex", job_id, timeout_ms);
+  }
+  if (name === "check_job_status") {
+    const { job_id } = args ?? {};
+    return handleCheckJobStatus("codex", job_id);
+  }
+  if (name === "kill_job") {
+    const { job_id, signal } = args ?? {};
+    return handleKillJob("codex", job_id, signal || void 0);
+  }
+  if (name === "list_jobs") {
+    const { status_filter, limit } = args ?? {};
+    return handleListJobs("codex", status_filter || void 0, limit);
+  }
+  return { content: [{ type: "text", text: `Unknown tool: ${name}` }], isError: true };
 });
 async function main() {
   const transport = new StdioServerTransport();

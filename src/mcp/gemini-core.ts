@@ -13,12 +13,13 @@
  */
 
 import { spawn } from 'child_process';
-import { readFileSync, realpathSync, statSync } from 'fs';
-import { resolve, relative, sep } from 'path';
+import { existsSync, mkdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'fs';
+import { dirname, resolve, relative, sep, isAbsolute } from 'path';
+import { getWorktreeRoot } from '../lib/worktree-paths.js';
 import { detectGeminiCli } from './cli-detection.js';
 import { resolveSystemPrompt, buildPromptWithSystemContext } from './prompt-injection.js';
 import { persistPrompt, persistResponse, getExpectedResponsePath } from './prompt-persistence.js';
-import { writeJobStatus, getStatusFilePath } from './prompt-persistence.js';
+import { writeJobStatus, getStatusFilePath, readJobStatus } from './prompt-persistence.js';
 import type { JobStatus, BackgroundJobMeta } from './prompt-persistence.js';
 
 // Default model can be overridden via environment variable
@@ -42,7 +43,7 @@ export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
 /**
  * Execute Gemini CLI command and return the response
  */
-export function executeGemini(prompt: string, model?: string): Promise<string> {
+export function executeGemini(prompt: string, model?: string, cwd?: string): Promise<string> {
   return new Promise((resolve, reject) => {
     let settled = false;
     const args = ['--yolo'];
@@ -50,7 +51,8 @@ export function executeGemini(prompt: string, model?: string): Promise<string> {
       args.push('--model', model);
     }
     const child = spawn('gemini', args, {
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      ...(cwd ? { cwd } : {})
     });
 
     const timeoutHandle = setTimeout(() => {
@@ -112,7 +114,8 @@ export function executeGemini(prompt: string, model?: string): Promise<string> {
 export function executeGeminiBackground(
   fullPrompt: string,
   model: string,
-  jobMeta: BackgroundJobMeta
+  jobMeta: BackgroundJobMeta,
+  workingDirectory?: string
 ): { pid: number } | { error: string } {
   try {
     const args = ['--yolo'];
@@ -121,7 +124,8 @@ export function executeGeminiBackground(
     }
     const child = spawn('gemini', args, {
       detached: true,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      ...(workingDirectory ? { cwd: workingDirectory } : {})
     });
 
     if (!child.pid) {
@@ -143,7 +147,7 @@ export function executeGeminiBackground(
       agentRole: jobMeta.agentRole,
       spawnedAt: new Date().toISOString(),
     };
-    writeJobStatus(initialStatus);
+    writeJobStatus(initialStatus, workingDirectory);
 
     let stdout = '';
     let stderr = '';
@@ -164,7 +168,7 @@ export function executeGeminiBackground(
           status: 'timeout',
           completedAt: new Date().toISOString(),
           error: `Gemini timed out after ${GEMINI_TIMEOUT}ms`,
-        });
+        }, workingDirectory);
       }
     }, GEMINI_TIMEOUT);
 
@@ -180,16 +184,22 @@ export function executeGeminiBackground(
         status: 'failed',
         completedAt: new Date().toISOString(),
         error: `Stdin write error: ${err.message}`,
-      });
+      }, workingDirectory);
     });
     child.stdin?.write(fullPrompt);
     child.stdin?.end();
-    writeJobStatus({ ...initialStatus, status: 'running' });
+    writeJobStatus({ ...initialStatus, status: 'running' }, workingDirectory);
 
     child.on('close', (code) => {
       if (settled) return;
       settled = true;
       clearTimeout(timeoutHandle);
+
+      // Check if user killed this job - if so, don't overwrite the killed status
+      const currentStatus = readJobStatus('gemini', jobMeta.slug, jobMeta.jobId);
+      if (currentStatus?.killedByUser) {
+        return; // Status already set by kill_job, don't overwrite
+      }
 
       if (code === 0 || stdout.trim()) {
         persistResponse({
@@ -199,19 +209,20 @@ export function executeGeminiBackground(
           promptId: jobMeta.jobId,
           slug: jobMeta.slug,
           response: stdout.trim(),
+          workingDirectory,
         });
         writeJobStatus({
           ...initialStatus,
           status: 'completed',
           completedAt: new Date().toISOString(),
-        });
+        }, workingDirectory);
       } else {
         writeJobStatus({
           ...initialStatus,
           status: 'failed',
           completedAt: new Date().toISOString(),
           error: `Gemini exited with code ${code}: ${stderr || 'No output'}`,
-        });
+        }, workingDirectory);
       }
     });
 
@@ -224,7 +235,7 @@ export function executeGeminiBackground(
         status: 'failed',
         completedAt: new Date().toISOString(),
         error: `Failed to spawn Gemini CLI: ${err.message}`,
-      });
+      }, workingDirectory);
     });
 
     return { pid };
@@ -236,15 +247,15 @@ export function executeGeminiBackground(
 /**
  * Validate and read a file for context inclusion
  */
-export function validateAndReadFile(filePath: string): string {
+export function validateAndReadFile(filePath: string, baseDir?: string): string {
   if (typeof filePath !== 'string') {
     return `--- File: ${filePath} --- (Invalid path type)`;
   }
   try {
-    const resolvedAbs = resolve(filePath);
+    const resolvedAbs = resolve(baseDir || process.cwd(), filePath);
 
     // Security: ensure file is within working directory (worktree boundary)
-    const cwd = process.cwd();
+    const cwd = baseDir || process.cwd();
     const cwdReal = realpathSync(cwd);
 
     const relAbs = relative(cwdReal, resolvedAbs);
@@ -288,13 +299,45 @@ export function validateAndReadFile(filePath: string): string {
  * @returns MCP-compatible response with content array
  */
 export async function handleAskGemini(args: {
-  prompt: string;
+  prompt_file: string;
+  output_file: string;
   agent_role: string;
   model?: string;
   files?: string[];
   background?: boolean;
+  working_directory?: string;
 }): Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
-  const { prompt, agent_role, model = GEMINI_DEFAULT_MODEL, files } = args;
+  const { agent_role, model = GEMINI_DEFAULT_MODEL, files } = args;
+
+  // Derive trusted root from process.cwd(), NOT from user-controlled input
+  const trustedRoot = getWorktreeRoot(process.cwd()) || process.cwd();
+  let trustedRootReal: string;
+  try {
+    trustedRootReal = realpathSync(trustedRoot);
+  } catch {
+    trustedRootReal = trustedRoot; // Fallback if realpath fails
+  }
+
+  // Derive baseDir from working_directory if provided
+  let baseDir = args.working_directory || process.cwd();
+  let baseDirReal: string;
+  try {
+    baseDirReal = realpathSync(baseDir);
+  } catch (err) {
+    return {
+      content: [{ type: 'text' as const, text: `working_directory '${args.working_directory}' does not exist or is not accessible: ${(err as Error).message}` }],
+      isError: true
+    };
+  }
+
+  // Validate baseDir is within trusted root
+  const relToRoot = relative(trustedRootReal, baseDirReal);
+  if (relToRoot.startsWith('..') || isAbsolute(relToRoot)) {
+    return {
+      content: [{ type: 'text' as const, text: `working_directory '${args.working_directory}' is outside the trusted worktree root '${trustedRoot}'.` }],
+      isError: true
+    };
+  }
 
   // Validate agent_role
   if (!agent_role || !(GEMINI_VALID_ROLES as readonly string[]).includes(agent_role)) {
@@ -305,6 +348,84 @@ export async function handleAskGemini(args: {
       }],
       isError: true
     };
+  }
+
+  // Validate output_file is provided
+  if (!args.output_file || !args.output_file.trim()) {
+    return {
+      content: [{ type: 'text' as const, text: 'output_file is required. Specify a path where the response should be written.' }],
+      isError: true
+    };
+  }
+
+  // Check if old 'prompt' parameter is used (hard error)
+  if ('prompt' in (args as Record<string, unknown>)) {
+    return {
+      content: [{ type: 'text' as const, text: "The 'prompt' parameter has been removed. Write the prompt to a file (recommended: .omc/prompts/) and pass 'prompt_file' instead." }],
+      isError: true
+    };
+  }
+
+  // Validate prompt_file is provided
+  if (!args.prompt_file || !args.prompt_file.trim()) {
+    return {
+      content: [{ type: 'text' as const, text: 'prompt_file is required.' }],
+      isError: true
+    };
+  }
+
+  // Resolve prompt from prompt_file
+  let resolvedPrompt: string;
+  const resolvedPath = resolve(baseDir, args.prompt_file);
+  const cwdReal = realpathSync(baseDir);
+  const relPath = relative(cwdReal, resolvedPath);
+  if (relPath === '' || relPath === '..' || relPath.startsWith('..' + sep)) {
+    return {
+      content: [{ type: 'text' as const, text: `prompt_file '${args.prompt_file}' is outside the working directory.` }],
+      isError: true
+    };
+  }
+
+  // Symlink-safe check: resolve and validate BEFORE reading
+  let resolvedReal: string;
+  try {
+    resolvedReal = realpathSync(resolvedPath);
+  } catch (err) {
+    return {
+      content: [{ type: 'text' as const, text: `Failed to resolve prompt_file '${args.prompt_file}': ${(err as Error).message}` }],
+      isError: true
+    };
+  }
+  const relReal = relative(cwdReal, resolvedReal);
+  if (relReal === '' || relReal === '..' || relReal.startsWith('..' + sep)) {
+    return {
+      content: [{ type: 'text' as const, text: `prompt_file '${args.prompt_file}' resolves to a path outside the working directory.` }],
+      isError: true
+    };
+  }
+
+  // Now safe to read from the validated real path
+  try {
+    resolvedPrompt = readFileSync(resolvedReal, 'utf-8');
+  } catch (err) {
+    return {
+      content: [{ type: 'text' as const, text: `Failed to read prompt_file '${args.prompt_file}': ${(err as Error).message}` }],
+      isError: true
+    };
+  }
+  // Check for empty prompt
+  if (!resolvedPrompt.trim()) {
+    return {
+      content: [{ type: 'text' as const, text: `prompt_file '${args.prompt_file}' is empty.` }],
+      isError: true
+    };
+  }
+
+  // If output_file specified, nudge the prompt to write there
+  let userPrompt = resolvedPrompt;
+  if (args.output_file) {
+    const outputPath = resolve(baseDir, args.output_file);
+    userPrompt = `IMPORTANT: Write your complete response to the file: ${outputPath}\n\n${resolvedPrompt}`;
   }
 
   // Check CLI availability
@@ -334,11 +455,11 @@ export async function handleAskGemini(args: {
         isError: true
       };
     }
-    fileContext = files.map(f => validateAndReadFile(f)).join('\n\n');
+    fileContext = files.map(f => validateAndReadFile(f, baseDir)).join('\n\n');
   }
 
   // Combine: system prompt > file context > user prompt
-  const fullPrompt = buildPromptWithSystemContext(prompt, fileContext, resolvedSystemPrompt);
+  const fullPrompt = buildPromptWithSystemContext(userPrompt, fileContext, resolvedSystemPrompt);
 
   // Persist prompt for audit trail (once, before fallback loop)
   const promptResult = persistPrompt({
@@ -346,13 +467,14 @@ export async function handleAskGemini(args: {
     agentRole: agent_role,
     model,
     files,
-    prompt,
+    prompt: resolvedPrompt,
     fullPrompt,
+    workingDirectory: baseDir,
   });
 
   // Compute expected response path for immediate return
   const expectedResponsePath = promptResult
-    ? getExpectedResponsePath('gemini', promptResult.slug, promptResult.id)
+    ? getExpectedResponsePath('gemini', promptResult.slug, promptResult.id, baseDir)
     : undefined;
 
   // Background mode: return immediately with job metadata
@@ -364,7 +486,7 @@ export async function handleAskGemini(args: {
       };
     }
 
-    const statusFilePath = getStatusFilePath('gemini', promptResult.slug, promptResult.id);
+    const statusFilePath = getStatusFilePath('gemini', promptResult.slug, promptResult.id, baseDir);
     const requestedModel = model;
     const fallbackIndex = GEMINI_MODEL_FALLBACKS.indexOf(requestedModel);
     const modelsToTry = fallbackIndex >= 0
@@ -379,7 +501,7 @@ export async function handleAskGemini(args: {
       model: modelsToTry[0],
       promptFile: promptResult.filePath,
       responseFile: expectedResponsePath!,
-    });
+    }, baseDir);
 
     if ('error' in result) {
       return {
@@ -427,7 +549,7 @@ export async function handleAskGemini(args: {
   const errors: string[] = [];
   for (const tryModel of modelsToTry) {
     try {
-      const response = await executeGemini(fullPrompt, tryModel);
+      const response = await executeGemini(fullPrompt, tryModel, baseDir);
       const usedFallback = tryModel !== requestedModel;
       const fallbackNote = usedFallback ? `[Fallback: used ${tryModel} instead of ${requestedModel}]\n\n` : '';
 
@@ -442,13 +564,62 @@ export async function handleAskGemini(args: {
           response,
           usedFallback,
           fallbackModel: usedFallback ? tryModel : undefined,
+          workingDirectory: baseDir,
         });
+      }
+
+      // Handle output_file: if CLI didn't write it, write stdout there directly
+      if (args.output_file) {
+        const outputPath = resolve(baseDirReal, args.output_file);
+
+        // Lexical check: outputPath must be within trusted root
+        const relOutput = relative(trustedRootReal, outputPath);
+        if (relOutput === '' || relOutput.startsWith('..') || isAbsolute(relOutput)) {
+          console.warn(`[gemini-core] output_file '${args.output_file}' resolves outside trusted root, skipping write.`);
+        } else {
+          try {
+            const outputDir = dirname(outputPath);
+
+            // Ensure parent directory exists within trusted root
+            if (!existsSync(outputDir)) {
+              const relDir = relative(trustedRootReal, outputDir);
+              if (relDir.startsWith('..') || isAbsolute(relDir)) {
+                console.warn(`[gemini-core] output_file directory is outside trusted root, skipping write.`);
+              } else {
+                mkdirSync(outputDir, { recursive: true });
+              }
+            }
+
+            // Validate parent directory with realpath (symlink-safe for existing directories)
+            let outputDirReal: string | undefined;
+            try {
+              outputDirReal = realpathSync(outputDir);
+            } catch {
+              // Parent still doesn't exist after mkdir - skip write
+              console.warn(`[gemini-core] Failed to resolve output directory, skipping write.`);
+            }
+
+            if (outputDirReal) {
+              const relDirReal = relative(trustedRootReal, outputDirReal);
+              // relDirReal === '' means output dir IS the trusted root - this is ALLOWED
+              // Only block if directory resolves OUTSIDE trusted root
+              if (relDirReal.startsWith('..') || isAbsolute(relDirReal)) {
+                console.warn(`[gemini-core] output_file directory resolves outside trusted root, skipping write.`);
+              } else {
+                // ALWAYS write (Issue 3 fix: no existence check)
+                writeFileSync(outputPath, response, 'utf-8');
+              }
+            }
+          } catch (err) {
+            console.warn(`[gemini-core] Failed to write output file: ${(err as Error).message}`);
+          }
+        }
       }
 
       return {
         content: [{
           type: 'text' as const,
-          text: `${paramLines}\n\n---\n\n${fallbackNote}${response}`
+          text: `${fallbackNote}${paramLines}`
         }]
       };
     } catch (err) {
