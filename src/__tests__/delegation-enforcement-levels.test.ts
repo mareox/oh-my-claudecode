@@ -597,6 +597,33 @@ describe('delegation-enforcement-levels', () => {
     it('returns true for empty/falsy path', () => {
       expect(isAllowedPath('')).toBe(true);
     });
+
+    // Traversal bypass prevention
+    it('rejects .omc/../src/file.ts traversal', () => {
+      expect(isAllowedPath('.omc/../src/file.ts')).toBe(false);
+    });
+
+    it('rejects .claude/../src/file.ts traversal', () => {
+      expect(isAllowedPath('.claude/../src/file.ts')).toBe(false);
+    });
+
+    it('rejects bare .. traversal', () => {
+      expect(isAllowedPath('../secret.ts')).toBe(false);
+    });
+
+    // Windows backslash paths
+    it('handles Windows-style .omc paths', () => {
+      expect(isAllowedPath('.omc\\plans\\test.md')).toBe(true);
+    });
+
+    it('rejects Windows traversal .omc\\..\\src\\file.ts', () => {
+      expect(isAllowedPath('.omc\\..\\src\\file.ts')).toBe(false);
+    });
+
+    // Nested .omc in non-root position (should be rejected for relative paths)
+    it('rejects foo/.omc/bar.ts as relative path', () => {
+      expect(isAllowedPath('foo/.omc/bar.ts')).toBe(false);
+    });
   });
 
   describe('isSourceFile', () => {

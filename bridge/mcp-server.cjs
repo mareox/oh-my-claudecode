@@ -17757,6 +17757,7 @@ var StdioServerTransport = class {
 var import_child_process2 = require("child_process");
 var import_fs = require("fs");
 var import_path2 = require("path");
+var import_url = require("url");
 
 // src/tools/lsp/servers.ts
 var import_child_process = require("child_process");
@@ -17901,6 +17902,9 @@ function getAllServers() {
 }
 
 // src/tools/lsp/client.ts
+function fileUri(filePath) {
+  return (0, import_url.pathToFileURL)((0, import_path2.resolve)(filePath)).href;
+}
 var LspClient = class {
   process = null;
   requestId = 0;
@@ -18082,7 +18086,7 @@ ${content}`;
   async initialize() {
     await this.request("initialize", {
       processId: process.pid,
-      rootUri: `file://${this.workspaceRoot}`,
+      rootUri: (0, import_url.pathToFileURL)(this.workspaceRoot).href,
       rootPath: this.workspaceRoot,
       capabilities: {
         textDocument: {
@@ -18106,7 +18110,7 @@ ${content}`;
    * Open a document for editing
    */
   async openDocument(filePath) {
-    const uri = `file://${(0, import_path2.resolve)(filePath)}`;
+    const uri = fileUri(filePath);
     if (this.openDocuments.has(uri)) return;
     if (!(0, import_fs.existsSync)(filePath)) {
       throw new Error(`File not found: ${filePath}`);
@@ -18128,7 +18132,7 @@ ${content}`;
    * Close a document
    */
   closeDocument(filePath) {
-    const uri = `file://${(0, import_path2.resolve)(filePath)}`;
+    const uri = fileUri(filePath);
     if (!this.openDocuments.has(uri)) return;
     this.notify("textDocument/didClose", {
       textDocument: { uri }
@@ -18186,7 +18190,7 @@ ${content}`;
    */
   async prepareDocument(filePath) {
     await this.openDocument(filePath);
-    return `file://${(0, import_path2.resolve)(filePath)}`;
+    return fileUri(filePath);
   }
   // LSP Request Methods
   /**
@@ -18239,7 +18243,7 @@ ${content}`;
    * Get diagnostics for a file
    */
   getDiagnostics(filePath) {
-    const uri = `file://${(0, import_path2.resolve)(filePath)}`;
+    const uri = fileUri(filePath);
     return this.diagnostics.get(uri) || [];
   }
   /**
@@ -20270,7 +20274,7 @@ var import_child_process6 = require("child_process");
 var fs4 = __toESM(require("fs"), 1);
 var fsPromises2 = __toESM(require("fs/promises"), 1);
 var path5 = __toESM(require("path"), 1);
-var import_url = require("url");
+var import_url2 = require("url");
 var import_child_process7 = require("child_process");
 var import_util7 = require("util");
 var import_meta2 = {};
@@ -20285,7 +20289,7 @@ function getBridgeScriptPath() {
   let moduleDir;
   try {
     if (import_meta2.url) {
-      const __filename2 = (0, import_url.fileURLToPath)(import_meta2.url);
+      const __filename2 = (0, import_url2.fileURLToPath)(import_meta2.url);
       moduleDir = path5.dirname(__filename2);
     } else {
       throw new Error("import.meta.url is empty");

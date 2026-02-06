@@ -7,9 +7,9 @@
  * - Environment variables
  */
 import { readFileSync, existsSync } from 'fs';
-import { homedir } from 'os';
 import { join, dirname } from 'path';
 import * as jsonc from 'jsonc-parser';
+import { getConfigDir } from '../utils/paths.js';
 /**
  * Default configuration
  */
@@ -84,7 +84,7 @@ export const DEFAULT_CONFIG = {
  * Configuration file locations
  */
 export function getConfigPaths() {
-    const userConfigDir = process.env.XDG_CONFIG_HOME ?? join(homedir(), '.config');
+    const userConfigDir = getConfigDir();
     return {
         user: join(userConfigDir, 'claude-sisyphus', 'config.jsonc'),
         project: join(process.cwd(), '.claude', 'sisyphus.jsonc')

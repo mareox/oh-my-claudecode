@@ -74,6 +74,8 @@ export function executeGemini(prompt: string, model?: string, cwd?: string): Pro
     const child = spawn('gemini', args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       ...(cwd ? { cwd } : {}),
+      // shell: true needed on Windows for .cmd/.bat executables.
+      // Safe: args are array-based and model names are regex-validated.
       ...(process.platform === 'win32' ? { shell: true } : {})
     });
 
@@ -149,6 +151,8 @@ export function executeGeminiBackground(
       detached: process.platform !== 'win32',
       stdio: ['pipe', 'pipe', 'pipe'],
       ...(workingDirectory ? { cwd: workingDirectory } : {}),
+      // shell: true needed on Windows for .cmd/.bat executables.
+      // Safe: args are array-based and model names are regex-validated.
       ...(process.platform === 'win32' ? { shell: true } : {})
     });
 

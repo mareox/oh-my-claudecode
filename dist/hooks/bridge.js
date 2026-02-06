@@ -12,6 +12,7 @@
  * echo "$INPUT" | node ~/.claude/omc/hook-bridge.mjs --hook=keyword-detector
  * ```
  */
+import { pathToFileURL } from 'url';
 import { removeCodeBlocks, getAllKeywords } from "./keyword-detector/index.js";
 import { readRalphState, incrementRalphIteration, clearRalphState, createRalphLoopHook, } from "./ralph/index.js";
 import { processOrchestratorPreTool } from "./omc-orchestrator/index.js";
@@ -580,7 +581,7 @@ export async function main() {
     console.log(JSON.stringify(output));
 }
 // Run if called directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
     main().catch((err) => {
         console.error("[hook-bridge] Fatal error:", err);
         process.exit(1);

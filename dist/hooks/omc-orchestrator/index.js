@@ -16,6 +16,7 @@ import { readBoulderState, getPlanProgress, } from '../../features/boulder-state
 import { addWorkingMemoryEntry, setPriorityContext, } from '../notepad/index.js';
 import { logAuditEntry } from './audit.js';
 import { getWorktreeRoot } from '../../lib/worktree-paths.js';
+import { toForwardSlash } from '../../utils/paths.js';
 // Re-export constants
 export * from './constants.js';
 // Config caching (30s TTL)
@@ -69,19 +70,22 @@ function getEnforcementLevel(directory) {
 export function isAllowedPath(filePath, directory) {
     if (!filePath)
         return true;
-    // Fast path: check relative patterns first
-    if (ALLOWED_PATH_PATTERNS.some(pattern => pattern.test(filePath)))
+    // Normalize to collapse .. and resolve . segments, then forward-slash
+    const normalized = toForwardSlash(path.normalize(filePath));
+    // Reject explicit traversal that escapes (e.g. "../foo")
+    if (normalized.startsWith('../') || normalized === '..')
+        return false;
+    // Fast path: check relative patterns
+    if (ALLOWED_PATH_PATTERNS.some(pattern => pattern.test(normalized)))
         return true;
-    // Absolute path: normalize to relative by stripping worktree root
-    if (filePath.startsWith('/')) {
+    // Absolute path: strip worktree root, then re-check
+    if (path.isAbsolute(filePath)) {
         const root = directory ? getWorktreeRoot(directory) : getWorktreeRoot();
-        if (root && filePath.startsWith(root + '/')) {
-            const relative = filePath.slice(root.length + 1);
-            return ALLOWED_PATH_PATTERNS.some(pattern => pattern.test(relative));
-        }
-        // If path is exactly the root, also check patterns
-        if (root && filePath === root) {
-            return ALLOWED_PATH_PATTERNS.some(pattern => pattern.test(''));
+        if (root) {
+            const rel = toForwardSlash(path.relative(root, filePath));
+            if (rel.startsWith('../') || rel === '..' || path.isAbsolute(rel))
+                return false;
+            return ALLOWED_PATH_PATTERNS.some(pattern => pattern.test(rel));
         }
     }
     return false;

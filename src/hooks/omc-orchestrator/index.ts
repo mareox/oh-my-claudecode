@@ -128,22 +128,20 @@ interface GitFileStat {
  */
 export function isAllowedPath(filePath: string, directory?: string): boolean {
   if (!filePath) return true;
-  const normalized = toForwardSlash(filePath);
-  // Fast path: check relative patterns first
+  // Convert backslashes first (so path.normalize resolves .. on all platforms),
+  // then normalize to collapse .. segments, then ensure forward slashes.
+  const normalized = toForwardSlash(path.normalize(toForwardSlash(filePath)));
+  // Reject explicit traversal that escapes (e.g. "../foo")
+  if (normalized.startsWith('../') || normalized === '..') return false;
+  // Fast path: check relative patterns
   if (ALLOWED_PATH_PATTERNS.some(pattern => pattern.test(normalized))) return true;
-  // Absolute path: normalize to relative by stripping worktree root
+  // Absolute path: strip worktree root, then re-check
   if (path.isAbsolute(filePath)) {
     const root = directory ? getWorktreeRoot(directory) : getWorktreeRoot();
     if (root) {
-      const normalizedRoot = toForwardSlash(root);
-      if (normalized.startsWith(normalizedRoot + '/')) {
-        const relative = toForwardSlash(path.relative(root, filePath));
-        return ALLOWED_PATH_PATTERNS.some(pattern => pattern.test(relative));
-      }
-    }
-    // If path is exactly the root, also check patterns
-    if (root && filePath === root) {
-      return ALLOWED_PATH_PATTERNS.some(pattern => pattern.test(''));
+      const rel = toForwardSlash(path.relative(root, filePath));
+      if (rel.startsWith('../') || rel === '..' || path.isAbsolute(rel)) return false;
+      return ALLOWED_PATH_PATTERNS.some(pattern => pattern.test(rel));
     }
   }
   return false;

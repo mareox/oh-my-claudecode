@@ -123,7 +123,10 @@ export function executeCodex(prompt, model, cwd) {
         const args = ['exec', '-m', model, '--json', '--full-auto'];
         const child = spawn('codex', args, {
             stdio: ['pipe', 'pipe', 'pipe'],
-            ...(cwd ? { cwd } : {})
+            ...(cwd ? { cwd } : {}),
+            // shell: true needed on Windows for .cmd/.bat executables.
+            // Safe: args are array-based and model names are regex-validated.
+            ...(process.platform === 'win32' ? { shell: true } : {})
         });
         // Manual timeout handling to ensure proper cleanup
         const timeoutHandle = setTimeout(() => {
@@ -235,9 +238,12 @@ export function executeCodexBackground(fullPrompt, modelInput, jobMeta, workingD
             validateModelName(tryModel);
             const args = ['exec', '-m', tryModel, '--json', '--full-auto'];
             const child = spawn('codex', args, {
-                detached: true,
+                detached: process.platform !== 'win32',
                 stdio: ['pipe', 'pipe', 'pipe'],
-                ...(workingDirectory ? { cwd: workingDirectory } : {})
+                ...(workingDirectory ? { cwd: workingDirectory } : {}),
+                // shell: true needed on Windows for .cmd/.bat executables.
+                // Safe: args are array-based and model names are regex-validated.
+                ...(process.platform === 'win32' ? { shell: true } : {})
             });
             if (!child.pid) {
                 return { error: 'Failed to get process ID' };

@@ -62,7 +62,10 @@ export function executeGemini(prompt, model, cwd) {
         }
         const child = spawn('gemini', args, {
             stdio: ['pipe', 'pipe', 'pipe'],
-            ...(cwd ? { cwd } : {})
+            ...(cwd ? { cwd } : {}),
+            // shell: true needed on Windows for .cmd/.bat executables.
+            // Safe: args are array-based and model names are regex-validated.
+            ...(process.platform === 'win32' ? { shell: true } : {})
         });
         const timeoutHandle = setTimeout(() => {
             if (!settled) {
@@ -123,9 +126,12 @@ export function executeGeminiBackground(fullPrompt, model, jobMeta, workingDirec
             args.push('--model', model);
         }
         const child = spawn('gemini', args, {
-            detached: true,
+            detached: process.platform !== 'win32',
             stdio: ['pipe', 'pipe', 'pipe'],
-            ...(workingDirectory ? { cwd: workingDirectory } : {})
+            ...(workingDirectory ? { cwd: workingDirectory } : {}),
+            // shell: true needed on Windows for .cmd/.bat executables.
+            // Safe: args are array-based and model names are regex-validated.
+            ...(process.platform === 'win32' ? { shell: true } : {})
         });
         if (!child.pid) {
             return { error: 'Failed to get process ID' };
