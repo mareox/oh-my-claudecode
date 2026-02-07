@@ -56,6 +56,44 @@ describe('permissions', () => {
       const perms = getDefaultPermissions('worker1');
       expect(isPathAllowed(perms, '../../etc/passwd', workDir)).toBe(false);
     });
+
+    it('treats dots literally, not as regex wildcards', () => {
+      const perms: WorkerPermissions = {
+        workerName: 'worker1',
+        allowedPaths: ['src/*.ts'],
+        deniedPaths: [],
+        allowedCommands: [],
+        maxFileSize: Infinity,
+      };
+      expect(isPathAllowed(perms, 'src/index.ts', workDir)).toBe(true);
+      // A dot in the pattern should NOT match arbitrary characters
+      expect(isPathAllowed(perms, 'src/indexXts', workDir)).toBe(false);
+    });
+
+    it('supports ? wildcard for single non-/ character', () => {
+      const perms: WorkerPermissions = {
+        workerName: 'worker1',
+        allowedPaths: ['src/?.ts'],
+        deniedPaths: [],
+        allowedCommands: [],
+        maxFileSize: Infinity,
+      };
+      expect(isPathAllowed(perms, 'src/a.ts', workDir)).toBe(true);
+      expect(isPathAllowed(perms, 'src/ab.ts', workDir)).toBe(false);
+    });
+
+    it('handles patterns with regex meta characters safely', () => {
+      const perms: WorkerPermissions = {
+        workerName: 'worker1',
+        allowedPaths: ['src/[utils]/**'],
+        deniedPaths: [],
+        allowedCommands: [],
+        maxFileSize: Infinity,
+      };
+      // Brackets should be treated literally, not as regex character classes
+      expect(isPathAllowed(perms, 'src/[utils]/index.ts', workDir)).toBe(true);
+      expect(isPathAllowed(perms, 'src/u/index.ts', workDir)).toBe(false);
+    });
   });
 
   describe('isCommandAllowed', () => {
@@ -113,6 +151,32 @@ describe('permissions', () => {
       const perms = getDefaultPermissions('worker1');
       const instructions = formatPermissionInstructions(perms);
       expect(instructions).toContain('No restrictions');
+    });
+
+    it('does not show "No restrictions" when only maxFileSize is set', () => {
+      const perms: WorkerPermissions = {
+        workerName: 'worker1',
+        allowedPaths: [],
+        deniedPaths: [],
+        allowedCommands: [],
+        maxFileSize: 51200, // 50KB
+      };
+      const instructions = formatPermissionInstructions(perms);
+      expect(instructions).toContain('50KB');
+      expect(instructions).not.toContain('No restrictions');
+    });
+
+    it('shows maxFileSize of 0 as a restriction', () => {
+      const perms: WorkerPermissions = {
+        workerName: 'worker1',
+        allowedPaths: [],
+        deniedPaths: [],
+        allowedCommands: [],
+        maxFileSize: 0,
+      };
+      const instructions = formatPermissionInstructions(perms);
+      expect(instructions).toContain('0KB');
+      expect(instructions).not.toContain('No restrictions');
     });
   });
 

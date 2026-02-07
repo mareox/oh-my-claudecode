@@ -58,18 +58,32 @@ function writeFileWithMode(filePath, data, mode = 384) {
   (0, import_fs.writeFileSync)(filePath, data, { encoding: "utf-8", mode });
 }
 function appendFileWithMode(filePath, data, mode = 384) {
-  if (!(0, import_fs.existsSync)(filePath)) {
-    (0, import_fs.writeFileSync)(filePath, data, { encoding: "utf-8", mode });
-  } else {
-    (0, import_fs.appendFileSync)(filePath, data, "utf-8");
+  const fd = (0, import_fs.openSync)(filePath, import_fs.constants.O_WRONLY | import_fs.constants.O_APPEND | import_fs.constants.O_CREAT, mode);
+  try {
+    (0, import_fs.writeSync)(fd, data, null, "utf-8");
+  } finally {
+    (0, import_fs.closeSync)(fd);
   }
 }
 function ensureDirWithMode(dirPath, mode = 448) {
   if (!(0, import_fs.existsSync)(dirPath)) (0, import_fs.mkdirSync)(dirPath, { recursive: true, mode });
 }
+function safeRealpath(p) {
+  try {
+    return (0, import_fs.realpathSync)(p);
+  } catch {
+    const parent = (0, import_path.dirname)(p);
+    const name = (0, import_path.basename)(p);
+    try {
+      return (0, import_path.resolve)((0, import_fs.realpathSync)(parent), name);
+    } catch {
+      return (0, import_path.resolve)(p);
+    }
+  }
+}
 function validateResolvedPath(resolvedPath, expectedBase) {
-  const absResolved = (0, import_path.resolve)(resolvedPath);
-  const absBase = (0, import_path.resolve)(expectedBase);
+  const absResolved = safeRealpath(resolvedPath);
+  const absBase = safeRealpath(expectedBase);
   const rel = (0, import_path.relative)(absBase, absResolved);
   if (rel.startsWith("..") || (0, import_path.resolve)(absBase, rel) !== absResolved) {
     throw new Error(`Path traversal detected: "${resolvedPath}" escapes base "${expectedBase}"`);
@@ -164,7 +178,8 @@ async function findNextTask(teamName, workerName) {
       claimedAt: Date.now(),
       claimPid: process.pid
     });
-    await new Promise((resolve4) => setTimeout(resolve4, 50));
+    const jitter = Math.floor(Math.random() * 100);
+    await new Promise((resolve4) => setTimeout(resolve4, 200 + jitter));
     const freshTask = readTask(teamName, id);
     if (!freshTask || freshTask.status !== "pending" || freshTask.claimedBy !== workerName || freshTask.claimPid !== process.pid) {
       continue;
@@ -286,7 +301,7 @@ function rotateInboxIfNeeded(teamName, workerName, maxSizeBytes) {
     writeFileWithMode(tmpPath, kept.join("\n") + "\n");
     (0, import_fs3.renameSync)(tmpPath, filePath);
     const cursorFile = inboxCursorPath(teamName, workerName);
-    writeFileWithMode(cursorFile, JSON.stringify({ bytesRead: 0 }));
+    atomicWriteJson(cursorFile, { bytesRead: 0 });
   } catch {
   }
 }
@@ -320,24 +335,35 @@ function readNewInboxMessages(teamName, workerName) {
     (0, import_fs3.closeSync)(fd);
   }
   const newData = buffer.toString("utf-8");
+  const lastNewlineIdx = newData.lastIndexOf("\n");
+  if (lastNewlineIdx === -1) {
+    return [];
+  }
+  const completeData = newData.substring(0, lastNewlineIdx + 1);
   const messages = [];
-  let lastNewlineOffset = 0;
-  const lines = newData.split("\n");
   let bytesProcessed = 0;
+  const lines = completeData.split("\n");
+  if (lines.length > 0 && lines[lines.length - 1] === "") {
+    lines.pop();
+  }
   for (const line of lines) {
-    bytesProcessed += Buffer.byteLength(line, "utf-8") + 1;
-    if (!line.trim()) continue;
+    if (!line.trim()) {
+      bytesProcessed += Buffer.byteLength(line, "utf-8") + 1;
+      continue;
+    }
+    const cleanLine = line.endsWith("\r") ? line.slice(0, -1) : line;
+    const lineBytes = Buffer.byteLength(line, "utf-8") + 1;
     try {
-      messages.push(JSON.parse(line));
-      lastNewlineOffset = bytesProcessed;
+      messages.push(JSON.parse(cleanLine));
+      bytesProcessed += lineBytes;
     } catch {
       break;
     }
   }
-  const newOffset = offset + (lastNewlineOffset > 0 ? lastNewlineOffset : 0);
+  const newOffset = offset + (bytesProcessed > 0 ? bytesProcessed : 0);
   ensureDir(cursorFile);
   const newCursor = { bytesRead: newOffset > offset ? newOffset : offset };
-  writeFileWithMode(cursorFile, JSON.stringify(newCursor));
+  atomicWriteJson(cursorFile, newCursor);
   return messages;
 }
 function checkShutdownSignal(teamName, workerName) {
@@ -490,9 +516,16 @@ var MAX_PROMPT_SIZE = 5e4;
 var MAX_INBOX_CONTEXT_SIZE = 2e4;
 function sanitizePromptContent(content, maxLength) {
   let sanitized = content.length > maxLength ? content.slice(0, maxLength) : content;
-  sanitized = sanitized.replace(/<(\/?)(TASK_SUBJECT)>/g, "[$1$2]");
-  sanitized = sanitized.replace(/<(\/?)(TASK_DESCRIPTION)>/g, "[$1$2]");
-  sanitized = sanitized.replace(/<(\/?)(INBOX_MESSAGE)>/g, "[$1$2]");
+  if (sanitized.length > 0) {
+    const lastCode = sanitized.charCodeAt(sanitized.length - 1);
+    if (lastCode >= 55296 && lastCode <= 56319) {
+      sanitized = sanitized.slice(0, -1);
+    }
+  }
+  sanitized = sanitized.replace(/<(\/?)(TASK_SUBJECT)[^>]*>/gi, "[$1$2]");
+  sanitized = sanitized.replace(/<(\/?)(TASK_DESCRIPTION)[^>]*>/gi, "[$1$2]");
+  sanitized = sanitized.replace(/<(\/?)(INBOX_MESSAGE)[^>]*>/gi, "[$1$2]");
+  sanitized = sanitized.replace(/<(\/?)(INSTRUCTIONS)[^>]*>/gi, "[$1$2]");
   return sanitized;
 }
 function formatPromptTemplate(sanitizedSubject, sanitizedDescription, workingDirectory, inboxContext) {
@@ -545,6 +578,11 @@ function buildTaskPrompt(task, messages, config) {
     const overBy = result.length - MAX_PROMPT_SIZE;
     sanitizedDescription = sanitizedDescription.slice(0, Math.max(0, sanitizedDescription.length - overBy));
     result = formatPromptTemplate(sanitizedSubject, sanitizedDescription, config.workingDirectory, inboxContext);
+    if (result.length > MAX_PROMPT_SIZE) {
+      const stillOverBy = result.length - MAX_PROMPT_SIZE;
+      sanitizedDescription = sanitizedDescription.slice(0, Math.max(0, sanitizedDescription.length - stillOverBy));
+      result = formatPromptTemplate(sanitizedSubject, sanitizedDescription, config.workingDirectory, inboxContext);
+    }
   }
   return result;
 }
@@ -559,38 +597,62 @@ function writePromptFile(config, taskId, prompt) {
 function getOutputPath(config, taskId) {
   const dir = (0, import_path6.join)(config.workingDirectory, ".omc", "outputs");
   ensureDirWithMode(dir);
-  return (0, import_path6.join)(dir, `team-${config.teamName}-task-${taskId}-${Date.now()}.md`);
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return (0, import_path6.join)(dir, `team-${config.teamName}-task-${taskId}-${Date.now()}-${suffix}.md`);
 }
 function readOutputSummary(outputFile) {
   try {
     if (!(0, import_fs6.existsSync)(outputFile)) return "(no output file)";
-    const content = (0, import_fs6.readFileSync)(outputFile, "utf-8");
-    if (content.length > 500) {
-      return content.slice(0, 500) + "... (truncated)";
+    const buf = Buffer.alloc(1024);
+    const fd = (0, import_fs6.openSync)(outputFile, "r");
+    try {
+      const bytesRead = (0, import_fs6.readSync)(fd, buf, 0, 1024, 0);
+      if (bytesRead === 0) return "(empty output)";
+      const content = buf.toString("utf-8", 0, bytesRead);
+      if (content.length > 500) {
+        return content.slice(0, 500) + "... (truncated)";
+      }
+      return content;
+    } finally {
+      (0, import_fs6.closeSync)(fd);
     }
-    return content || "(empty output)";
   } catch {
     return "(error reading output)";
   }
 }
+var MAX_CODEX_OUTPUT_SIZE = 1024 * 1024;
 function parseCodexOutput(output) {
   const lines = output.trim().split("\n").filter((l) => l.trim());
   const messages = [];
+  let totalSize = 0;
   for (const line of lines) {
+    if (totalSize >= MAX_CODEX_OUTPUT_SIZE) {
+      messages.push("[output truncated]");
+      break;
+    }
     try {
       const event = JSON.parse(line);
       if (event.type === "item.completed" && event.item?.type === "agent_message" && event.item.text) {
         messages.push(event.item.text);
+        totalSize += event.item.text.length;
       }
       if (event.type === "message" && event.content) {
-        if (typeof event.content === "string") messages.push(event.content);
-        else if (Array.isArray(event.content)) {
+        if (typeof event.content === "string") {
+          messages.push(event.content);
+          totalSize += event.content.length;
+        } else if (Array.isArray(event.content)) {
           for (const part of event.content) {
-            if (part.type === "text" && part.text) messages.push(part.text);
+            if (part.type === "text" && part.text) {
+              messages.push(part.text);
+              totalSize += part.text.length;
+            }
           }
         }
       }
-      if (event.type === "output_text" && event.text) messages.push(event.text);
+      if (event.type === "output_text" && event.text) {
+        messages.push(event.text);
+        totalSize += event.text.length;
+      }
     } catch {
     }
   }
@@ -633,11 +695,12 @@ function spawnCliProcess(provider, prompt, model, cwd, timeoutMs) {
       if (!settled) {
         settled = true;
         clearTimeout(timeoutHandle);
-        if (code === 0 || stdout.trim()) {
+        if (code === 0) {
           const response = provider === "codex" ? parseCodexOutput(stdout) : stdout.trim();
           resolve4(response);
         } else {
-          reject(new Error(`CLI exited with code ${code}: ${stderr || "No output"}`));
+          const detail = stderr || stdout.trim() || "No output";
+          reject(new Error(`CLI exited with code ${code}: ${detail}`));
         }
       }
     });
@@ -872,9 +935,19 @@ function getWorktreeRoot(cwd) {
 
 // src/team/bridge-entry.ts
 function validateConfigPath(configPath2, homeDir) {
-  const isUnderHome = configPath2.startsWith(homeDir + "/") || configPath2 === homeDir;
-  const isTrustedSubpath = configPath2.includes("/.claude/") || configPath2.includes("/.omc/");
-  return isUnderHome && isTrustedSubpath;
+  const resolved = (0, import_path8.resolve)(configPath2);
+  const isUnderHome = resolved.startsWith(homeDir + "/") || resolved === homeDir;
+  const isTrustedSubpath = resolved.includes("/.claude/") || resolved.includes("/.omc/");
+  if (!isUnderHome || !isTrustedSubpath) return false;
+  try {
+    const parentDir = (0, import_path8.resolve)(resolved, "..");
+    const realParent = (0, import_fs8.realpathSync)(parentDir);
+    if (!realParent.startsWith(homeDir + "/") && realParent !== homeDir) {
+      return false;
+    }
+  } catch {
+  }
+  return true;
 }
 function validateBridgeWorkingDirectory(workingDirectory) {
   let stat;

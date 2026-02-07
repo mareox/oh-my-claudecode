@@ -13,6 +13,7 @@ import { homedir } from 'node:os';
 import type { WorkerBackend, WorkerCapability } from './types.js';
 import { listMcpWorkers } from './team-registration.js';
 import { readHeartbeat, isWorkerAlive } from './heartbeat.js';
+import { getDefaultCapabilities } from './capabilities.js';
 
 export interface UnifiedTeamMember {
   name: string;
@@ -49,7 +50,7 @@ export function getTeamMembers(
             agentId: member.agentId || '',
             backend: 'claude-native',
             model: member.model || 'unknown',
-            capabilities: ['code-edit', 'testing', 'general'],
+            capabilities: getDefaultCapabilities('claude-native'),
             joinedAt: member.joinedAt || 0,
             status: 'active', // Claude native members are managed by CC
             currentTaskId: null,
@@ -77,12 +78,8 @@ export function getTeamMembers(
       if (!alive) status = 'dead';
 
       // Determine backend and default capabilities
-      let backend: WorkerBackend = 'mcp-codex';
-      let capabilities: WorkerCapability[] = ['code-review', 'security-review', 'architecture', 'refactoring'];
-      if (worker.agentType === 'mcp-gemini') {
-        backend = 'mcp-gemini';
-        capabilities = ['ui-design', 'documentation', 'research', 'code-edit'];
-      }
+      const backend: WorkerBackend = worker.agentType === 'mcp-gemini' ? 'mcp-gemini' : 'mcp-codex';
+      const capabilities = getDefaultCapabilities(backend);
 
       members.push({
         name: worker.name,

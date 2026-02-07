@@ -11,6 +11,15 @@
 import { execFileSync } from 'node:child_process';
 import { listTeamWorktrees } from './git-worktree.js';
 
+const BRANCH_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9/_.-]*$/;
+
+/** Validate branch name to prevent flag injection in git commands */
+function validateBranchName(branch: string): void {
+  if (!BRANCH_NAME_RE.test(branch)) {
+    throw new Error(`Invalid branch name: "${branch}" — must match ${BRANCH_NAME_RE}`);
+  }
+}
+
 export interface MergeResult {
   workerName: string;
   branch: string;
@@ -29,35 +38,34 @@ export function checkMergeConflicts(
   baseBranch: string,
   repoRoot: string
 ): string[] {
-  try {
-    // Find merge base
-    const mergeBase = execFileSync(
-      'git', ['merge-base', baseBranch, workerBranch],
-      { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
-    ).trim();
+  validateBranchName(workerBranch);
+  validateBranchName(baseBranch);
 
-    // Check for overlapping changes by comparing what changed in each branch
-    const baseDiff = execFileSync(
-      'git', ['diff', '--name-only', mergeBase, baseBranch],
-      { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
-    ).trim();
-    const workerDiff = execFileSync(
-      'git', ['diff', '--name-only', mergeBase, workerBranch],
-      { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
-    ).trim();
+  // Find merge base
+  const mergeBase = execFileSync(
+    'git', ['merge-base', baseBranch, workerBranch],
+    { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+  ).trim();
 
-    if (!baseDiff || !workerDiff) {
-      return []; // No changes in one or both branches
-    }
+  // Check for overlapping changes by comparing what changed in each branch
+  const baseDiff = execFileSync(
+    'git', ['diff', '--name-only', mergeBase, baseBranch],
+    { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+  ).trim();
+  const workerDiff = execFileSync(
+    'git', ['diff', '--name-only', mergeBase, workerBranch],
+    { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
+  ).trim();
 
-    const baseFiles = new Set(baseDiff.split('\n').filter(f => f));
-    const workerFiles = workerDiff.split('\n').filter(f => f);
-
-    // Files changed in both branches are potential conflicts
-    return workerFiles.filter(f => baseFiles.has(f));
-  } catch {
-    return []; // Can't determine conflicts, assume clean
+  if (!baseDiff || !workerDiff) {
+    return []; // No changes in one or both branches
   }
+
+  const baseFiles = new Set(baseDiff.split('\n').filter(f => f));
+  const workerFiles = workerDiff.split('\n').filter(f => f);
+
+  // Files changed in both branches are potential conflicts
+  return workerFiles.filter(f => baseFiles.has(f));
 }
 
 /**
@@ -70,9 +78,22 @@ export function mergeWorkerBranch(
   baseBranch: string,
   repoRoot: string
 ): MergeResult {
+  validateBranchName(workerBranch);
+  validateBranchName(baseBranch);
+
   const workerName = workerBranch.split('/').pop() || workerBranch;
 
   try {
+    // Abort if working tree has uncommitted changes to tracked files to prevent clobbering.
+    // Uses diff-index which ignores untracked files (e.g. .omc/ worktree metadata).
+    try {
+      execFileSync('git', ['diff-index', '--quiet', 'HEAD', '--'], {
+        cwd: repoRoot, stdio: 'pipe'
+      });
+    } catch {
+      throw new Error('Working tree has uncommitted changes — commit or stash before merging');
+    }
+
     // Ensure we're on the base branch
     execFileSync('git', ['checkout', baseBranch], {
       cwd: repoRoot, stdio: 'pipe'
@@ -129,6 +150,8 @@ export function mergeAllWorkerBranches(
   const base = baseBranch || execFileSync('git', ['rev-parse', '--abbrev-ref', 'HEAD'], {
     cwd: repoRoot, encoding: 'utf-8', stdio: 'pipe'
   }).trim();
+
+  validateBranchName(base);
 
   const results: MergeResult[] = [];
 

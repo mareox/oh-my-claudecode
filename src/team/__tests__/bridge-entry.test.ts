@@ -92,4 +92,9 @@ describe('validateConfigPath', () => {
   it('should reject path that matches subpath but not home', () => {
     expect(validateConfigPath('/other/.claude/config.json', home)).toBe(false);
   });
+
+  it('should reject path traversal via ../ that escapes trusted subpath', () => {
+    // ~/foo/.claude/../../evil.json resolves to ~/evil.json (no trusted subpath)
+    expect(validateConfigPath('/home/user/foo/.claude/../../evil.json', home)).toBe(false);
+  });
 });

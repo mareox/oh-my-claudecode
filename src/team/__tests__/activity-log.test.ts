@@ -150,8 +150,8 @@ describe('activity-log', () => {
       ];
 
       const result = formatActivityTimeline(activities);
-      expect(result).toContain('[10:00] worker1: Started bridge daemon');
-      expect(result).toContain('[10:05] worker1: Completed task t1 [t1]');
+      expect(result).toContain('[2026-01-01 10:00] worker1: Started bridge daemon');
+      expect(result).toContain('[2026-01-01 10:05] worker1: Completed task t1 [t1]');
     });
   });
 });

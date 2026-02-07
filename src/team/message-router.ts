@@ -10,8 +10,9 @@
 
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { appendFileWithMode, ensureDirWithMode } from './fs-utils.js';
+import { appendFileWithMode, ensureDirWithMode, validateResolvedPath } from './fs-utils.js';
 import { getTeamMembers } from './unified-team.js';
+import { sanitizeName } from './tmux-session.js';
 import type { InboxMessage } from './types.js';
 
 export interface RouteResult {
@@ -53,9 +54,11 @@ export function routeMessage(
   }
 
   // MCP worker: write to inbox
-  const inboxDir = join(homedir(), '.claude', 'teams', teamName, 'inbox');
+  const teamsBase = join(homedir(), '.claude', 'teams');
+  const inboxDir = join(teamsBase, sanitizeName(teamName), 'inbox');
   ensureDirWithMode(inboxDir);
-  const inboxPath = join(inboxDir, `${recipientName}.jsonl`);
+  const inboxPath = join(inboxDir, `${sanitizeName(recipientName)}.jsonl`);
+  validateResolvedPath(inboxPath, teamsBase);
 
   const message: InboxMessage = {
     type: 'message',
@@ -90,9 +93,11 @@ export function broadcastToTeam(
       nativeRecipients.push(member.name);
     } else {
       // Write to each MCP worker's inbox
-      const inboxDir = join(homedir(), '.claude', 'teams', teamName, 'inbox');
+      const teamsBase = join(homedir(), '.claude', 'teams');
+      const inboxDir = join(teamsBase, sanitizeName(teamName), 'inbox');
       ensureDirWithMode(inboxDir);
-      const inboxPath = join(inboxDir, `${member.name}.jsonl`);
+      const inboxPath = join(inboxDir, `${sanitizeName(member.name)}.jsonl`);
+      validateResolvedPath(inboxPath, teamsBase);
 
       const message: InboxMessage = {
         type: 'message',

@@ -20,18 +20,86 @@ export interface WorkerPermissions {
 
 /**
  * Simple glob matching for path patterns.
- * Supports: * (any segment), ** (any depth), exact match
+ * Supports: * (any non-/ chars), ** (any depth including /), ? (single non-/ char), exact match.
+ *
+ * Uses iterative character-by-character matching to avoid ReDoS risk from regex.
  */
 function matchGlob(pattern: string, path: string): boolean {
-  // Convert glob to regex
-  const regexStr = pattern
-    .replace(/\*\*/g, '___DOUBLESTAR___')
-    .replace(/\*/g, '[^/]*')
-    .replace(/___DOUBLESTAR___/g, '.*')
-    .replace(/\?/g, '[^/]');
+  let pi = 0; // pattern index
+  let si = 0; // string (path) index
+  let starPi = -1; // pattern index after last '*' fallback point
+  let starSi = -1; // string index at last '*' fallback point
 
-  const regex = new RegExp(`^${regexStr}$`);
-  return regex.test(path);
+  while (si < path.length) {
+    // Check for '**' (matches anything including '/')
+    if (pi < pattern.length - 1 && pattern[pi] === '*' && pattern[pi + 1] === '*') {
+      // Consume the '**'
+      pi += 2;
+      // Skip trailing '/' after '**' if present
+      if (pi < pattern.length && pattern[pi] === '/') pi++;
+      starPi = pi;
+      starSi = si;
+      continue;
+    }
+
+    // Check for single '*' (matches any non-/ chars)
+    if (pi < pattern.length && pattern[pi] === '*') {
+      pi++;
+      starPi = pi;
+      starSi = si;
+      continue;
+    }
+
+    // Check for '?' (matches single non-/ char)
+    if (pi < pattern.length && pattern[pi] === '?' && path[si] !== '/') {
+      pi++;
+      si++;
+      continue;
+    }
+
+    // Exact character match
+    if (pi < pattern.length && pattern[pi] === path[si]) {
+      pi++;
+      si++;
+      continue;
+    }
+
+    // Mismatch: backtrack to last star if possible
+    if (starPi !== -1) {
+      pi = starPi;
+      starSi++;
+      si = starSi;
+
+      // For single '*', don't match across '/'
+      // We detect this by checking if the star was a '**' or '*'
+      // If we got here from '**', slashes are OK; from '*', skip if slash
+      // Re-check: was the star a '**'?
+      const wasSingleStar =
+        starPi >= 2 && pattern[starPi - 2] === '*' && pattern[starPi - 1] === '*' ? false :
+        starPi >= 1 && pattern[starPi - 1] === '*' ? true : false;
+
+      if (wasSingleStar && si > 0 && path[si - 1] === '/') {
+        return false;
+      }
+      continue;
+    }
+
+    return false;
+  }
+
+  // Consume remaining pattern characters (trailing '*' or '**')
+  while (pi < pattern.length) {
+    if (pattern[pi] === '*') {
+      pi++;
+    } else if (pattern[pi] === '/') {
+      // Allow trailing slash in pattern after '**'
+      pi++;
+    } else {
+      break;
+    }
+  }
+
+  return pi === pattern.length;
 }
 
 /**
@@ -103,7 +171,7 @@ export function formatPermissionInstructions(
     lines.push(`- You may ONLY run commands starting with: ${permissions.allowedCommands.join(', ')}`);
   }
 
-  if (permissions.maxFileSize > 0 && permissions.maxFileSize < Infinity) {
+  if (Number.isFinite(permissions.maxFileSize)) {
     lines.push(`- Maximum file size: ${Math.round(permissions.maxFileSize / 1024)}KB per file`);
   }
 

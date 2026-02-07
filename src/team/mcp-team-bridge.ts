@@ -8,7 +8,7 @@
  */
 
 import { spawn, ChildProcess } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, openSync, readSync, closeSync } from 'fs';
 import { join } from 'path';
 import { writeFileWithMode, ensureDirWithMode } from './fs-utils.js';
 import type { BridgeConfig, TaskFile, OutboxMessage, HeartbeatData, InboxMessage } from './types.js';
@@ -86,10 +86,18 @@ const MAX_INBOX_CONTEXT_SIZE = 20000;
  */
 export function sanitizePromptContent(content: string, maxLength: number): string {
   let sanitized = content.length > maxLength ? content.slice(0, maxLength) : content;
-  // Escape XML-like tags that match our prompt delimiters
-  sanitized = sanitized.replace(/<(\/?)(TASK_SUBJECT)>/g, '[$1$2]');
-  sanitized = sanitized.replace(/<(\/?)(TASK_DESCRIPTION)>/g, '[$1$2]');
-  sanitized = sanitized.replace(/<(\/?)(INBOX_MESSAGE)>/g, '[$1$2]');
+  // If truncation split a surrogate pair, remove the dangling high surrogate
+  if (sanitized.length > 0) {
+    const lastCode = sanitized.charCodeAt(sanitized.length - 1);
+    if (lastCode >= 0xD800 && lastCode <= 0xDBFF) {
+      sanitized = sanitized.slice(0, -1);
+    }
+  }
+  // Escape XML-like tags that match our prompt delimiters (including tags with attributes)
+  sanitized = sanitized.replace(/<(\/?)(TASK_SUBJECT)[^>]*>/gi, '[$1$2]');
+  sanitized = sanitized.replace(/<(\/?)(TASK_DESCRIPTION)[^>]*>/gi, '[$1$2]');
+  sanitized = sanitized.replace(/<(\/?)(INBOX_MESSAGE)[^>]*>/gi, '[$1$2]');
+  sanitized = sanitized.replace(/<(\/?)(INSTRUCTIONS)[^>]*>/gi, '[$1$2]');
   return sanitized;
 }
 
@@ -156,6 +164,13 @@ function buildTaskPrompt(task: TaskFile, messages: InboxMessage[], config: Bridg
     sanitizedDescription = sanitizedDescription.slice(0, Math.max(0, sanitizedDescription.length - overBy));
     // Rebuild with truncated description
     result = formatPromptTemplate(sanitizedSubject, sanitizedDescription, config.workingDirectory, inboxContext);
+
+    // Final safety check: if still over limit after rebuild, hard-trim the description further
+    if (result.length > MAX_PROMPT_SIZE) {
+      const stillOverBy = result.length - MAX_PROMPT_SIZE;
+      sanitizedDescription = sanitizedDescription.slice(0, Math.max(0, sanitizedDescription.length - stillOverBy));
+      result = formatPromptTemplate(sanitizedSubject, sanitizedDescription, config.workingDirectory, inboxContext);
+    }
   }
 
   return result;
@@ -175,43 +190,69 @@ function writePromptFile(config: BridgeConfig, taskId: string, prompt: string): 
 function getOutputPath(config: BridgeConfig, taskId: string): string {
   const dir = join(config.workingDirectory, '.omc', 'outputs');
   ensureDirWithMode(dir);
-  return join(dir, `team-${config.teamName}-task-${taskId}-${Date.now()}.md`);
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return join(dir, `team-${config.teamName}-task-${taskId}-${Date.now()}-${suffix}.md`);
 }
 
 /** Read output summary (first 500 chars) */
 function readOutputSummary(outputFile: string): string {
   try {
     if (!existsSync(outputFile)) return '(no output file)';
-    const content = readFileSync(outputFile, 'utf-8');
-    if (content.length > 500) {
-      return content.slice(0, 500) + '... (truncated)';
+    const buf = Buffer.alloc(1024);
+    const fd = openSync(outputFile, 'r');
+    try {
+      const bytesRead = readSync(fd, buf, 0, 1024, 0);
+      if (bytesRead === 0) return '(empty output)';
+      const content = buf.toString('utf-8', 0, bytesRead);
+      if (content.length > 500) {
+        return content.slice(0, 500) + '... (truncated)';
+      }
+      return content;
+    } finally {
+      closeSync(fd);
     }
-    return content || '(empty output)';
   } catch {
     return '(error reading output)';
   }
 }
 
+/** Maximum accumulated size for parseCodexOutput (1MB) */
+const MAX_CODEX_OUTPUT_SIZE = 1024 * 1024;
+
 /** Parse Codex JSONL output to extract text responses */
 function parseCodexOutput(output: string): string {
   const lines = output.trim().split('\n').filter(l => l.trim());
   const messages: string[] = [];
+  let totalSize = 0;
 
   for (const line of lines) {
+    if (totalSize >= MAX_CODEX_OUTPUT_SIZE) {
+      messages.push('[output truncated]');
+      break;
+    }
     try {
       const event = JSON.parse(line);
       if (event.type === 'item.completed' && event.item?.type === 'agent_message' && event.item.text) {
         messages.push(event.item.text);
+        totalSize += event.item.text.length;
       }
       if (event.type === 'message' && event.content) {
-        if (typeof event.content === 'string') messages.push(event.content);
-        else if (Array.isArray(event.content)) {
+        if (typeof event.content === 'string') {
+          messages.push(event.content);
+          totalSize += event.content.length;
+        } else if (Array.isArray(event.content)) {
           for (const part of event.content) {
-            if (part.type === 'text' && part.text) messages.push(part.text);
+            if (part.type === 'text' && part.text) {
+              messages.push(part.text);
+              totalSize += part.text.length;
+            }
           }
         }
       }
-      if (event.type === 'output_text' && event.text) messages.push(event.text);
+      if (event.type === 'output_text' && event.text) {
+        messages.push(event.text);
+        totalSize += event.text.length;
+      }
     } catch { /* skip non-JSON lines */ }
   }
 
@@ -271,11 +312,12 @@ function spawnCliProcess(
       if (!settled) {
         settled = true;
         clearTimeout(timeoutHandle);
-        if (code === 0 || stdout.trim()) {
+        if (code === 0) {
           const response = provider === 'codex' ? parseCodexOutput(stdout) : stdout.trim();
           resolve(response);
         } else {
-          reject(new Error(`CLI exited with code ${code}: ${stderr || 'No output'}`));
+          const detail = stderr || stdout.trim() || 'No output';
+          reject(new Error(`CLI exited with code ${code}: ${detail}`));
         }
       }
     });

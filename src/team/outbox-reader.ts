@@ -13,7 +13,7 @@ import {
 } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
-import { validateResolvedPath, writeFileWithMode, ensureDirWithMode } from './fs-utils.js';
+import { validateResolvedPath, writeFileWithMode, atomicWriteJson, ensureDirWithMode } from './fs-utils.js';
 import { sanitizeName } from './tmux-session.js';
 import type { OutboxMessage } from './types.js';
 
@@ -80,11 +80,11 @@ export function readNewOutboxMessages(
     } catch { /* skip malformed lines */ }
   }
 
-  // Update cursor
+  // Update cursor atomically to prevent corruption on crash
   const newCursor: OutboxCursor = { bytesRead: cursor.bytesRead + bytesToRead };
   const cursorDir = join(teamsDir(), safeName, 'outbox');
   ensureDirWithMode(cursorDir);
-  writeFileWithMode(cursorPath, JSON.stringify(newCursor));
+  atomicWriteJson(cursorPath, newCursor);
 
   return messages;
 }

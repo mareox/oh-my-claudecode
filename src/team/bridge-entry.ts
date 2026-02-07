@@ -18,11 +18,29 @@ import { sanitizeName } from './tmux-session.js';
 /**
  * Validate that a config path is under the user's home directory
  * and contains a trusted subpath (/.claude/ or /.omc/).
+ * Resolves the path first to defeat traversal attacks like ~/foo/.claude/../../evil.json.
  */
 export function validateConfigPath(configPath: string, homeDir: string): boolean {
-  const isUnderHome = configPath.startsWith(homeDir + '/') || configPath === homeDir;
-  const isTrustedSubpath = configPath.includes('/.claude/') || configPath.includes('/.omc/');
-  return isUnderHome && isTrustedSubpath;
+  // Resolve to canonical absolute path to defeat ".." traversal
+  const resolved = resolve(configPath);
+
+  const isUnderHome = resolved.startsWith(homeDir + '/') || resolved === homeDir;
+  const isTrustedSubpath = resolved.includes('/.claude/') || resolved.includes('/.omc/');
+  if (!isUnderHome || !isTrustedSubpath) return false;
+
+  // Additionally verify via realpathSync on the parent directory (if it exists)
+  // to defeat symlink attacks where the parent is a symlink outside home
+  try {
+    const parentDir = resolve(resolved, '..');
+    const realParent = realpathSync(parentDir);
+    if (!realParent.startsWith(homeDir + '/') && realParent !== homeDir) {
+      return false;
+    }
+  } catch {
+    // Parent directory doesn't exist yet — allow (file may be about to be created)
+  }
+
+  return true;
 }
 
 /**
@@ -136,7 +154,8 @@ function main(): void {
   });
 }
 
-// Only run main if this file is the entry point (not imported for testing)
+// Only run main if this file is the entry point (not imported for testing).
+// Note: require.main === module is correct here - this file is bundled to CJS by esbuild.
 if (require.main === module) {
   main();
 }

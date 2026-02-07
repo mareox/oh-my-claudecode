@@ -114,7 +114,8 @@ export function formatActivityTimeline(activities: ActivityEntry[]): string {
 
   const lines: string[] = [];
   for (const a of activities) {
-    const time = a.timestamp.slice(11, 16); // HH:MM
+    // Include full YYYY-MM-DD HH:MM timestamp for clarity across multi-day timelines
+    const time = a.timestamp.slice(0, 16).replace('T', ' '); // YYYY-MM-DD HH:MM
     const target = a.target ? ` [${a.target}]` : '';
     lines.push(`[${time}] ${a.actor}: ${a.action}${target}`);
   }

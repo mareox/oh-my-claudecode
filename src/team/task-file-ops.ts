@@ -81,7 +81,7 @@ export function updateTask(teamName: string, taskId: string, updates: TaskFileUp
  *
  * TOCTOU mitigation (best-effort, not true flock()):
  * 1. Write claim marker {claimedBy, claimedAt, claimPid} via updateTask
- * 2. Wait 50ms for other workers to also write their claims
+ * 2. Wait 200ms + random 0-100ms jitter for other workers to also write their claims
  * 3. Re-read task and verify claimedBy + claimPid still match this worker
  * 4. If mismatch, another worker won the race — skip to next task
  */
@@ -105,8 +105,9 @@ export async function findNextTask(teamName: string, workerName: string): Promis
       claimPid: process.pid,
     });
 
-    // Wait for other workers to also attempt claims
-    await new Promise(resolve => setTimeout(resolve, 50));
+    // Wait for other workers to also attempt claims (200ms + random 0-100ms jitter)
+    const jitter = Math.floor(Math.random() * 100);
+    await new Promise(resolve => setTimeout(resolve, 200 + jitter));
 
     // Re-read and verify claim still belongs to us
     const freshTask = readTask(teamName, id);
