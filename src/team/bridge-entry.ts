@@ -16,6 +16,34 @@ import { getWorktreeRoot } from '../lib/worktree-paths.js';
 import { sanitizeName } from './tmux-session.js';
 
 /**
+ * Validate that a config path is under the user's home directory
+ * and contains a trusted subpath (/.claude/ or /.omc/).
+ * Resolves the path first to defeat traversal attacks like ~/foo/.claude/../../evil.json.
+ */
+export function validateConfigPath(configPath: string, homeDir: string): boolean {
+  // Resolve to canonical absolute path to defeat ".." traversal
+  const resolved = resolve(configPath);
+
+  const isUnderHome = resolved.startsWith(homeDir + '/') || resolved === homeDir;
+  const isTrustedSubpath = resolved.includes('/.claude/') || resolved.includes('/.omc/');
+  if (!isUnderHome || !isTrustedSubpath) return false;
+
+  // Additionally verify via realpathSync on the parent directory (if it exists)
+  // to defeat symlink attacks where the parent is a symlink outside home
+  try {
+    const parentDir = resolve(resolved, '..');
+    const realParent = realpathSync(parentDir);
+    if (!realParent.startsWith(homeDir + '/') && realParent !== homeDir) {
+      return false;
+    }
+  } catch {
+    // Parent directory doesn't exist yet — allow (file may be about to be created)
+  }
+
+  return true;
+}
+
+/**
  * Validate the bridge working directory is safe:
  * - Must exist and be a directory
  * - Must resolve (via realpathSync) to a path under the user's home directory
@@ -59,8 +87,8 @@ function main(): void {
 
   // Validate config path is from a trusted location
   const home = homedir();
-  if (!configPath.startsWith(home + '/.claude/') && !configPath.includes('/.omc/')) {
-    console.error(`Config path must be under ~/.claude/ or contain /.omc/: ${configPath}`);
+  if (!validateConfigPath(configPath, home)) {
+    console.error(`Config path must be under ~/ with .claude/ or .omc/ subpath: ${configPath}`);
     process.exit(1);
   }
 
@@ -126,4 +154,8 @@ function main(): void {
   });
 }
 
-main();
+// Only run main if this file is the entry point (not imported for testing).
+// Note: require.main === module is correct here - this file is bundled to CJS by esbuild.
+if (require.main === module) {
+  main();
+}
