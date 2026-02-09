@@ -14885,7 +14885,6 @@ function validateModelName(model) {
 var GEMINI_DEFAULT_MODEL = process.env.OMC_GEMINI_DEFAULT_MODEL || "gemini-3-pro-preview";
 var GEMINI_TIMEOUT = Math.min(Math.max(5e3, parseInt(process.env.OMC_GEMINI_TIMEOUT || "3600000", 10) || 36e5), 36e5);
 var GEMINI_RECOMMENDED_ROLES = ["designer", "writer", "vision"];
-var MAX_CONTEXT_FILES = 20;
 var MAX_FILE_SIZE = 5 * 1024 * 1024;
 function isGeminiRetryableError(stdout, stderr = "") {
   const combined = `${stdout}
@@ -15303,15 +15302,6 @@ ${detection.installHint}`
   const resolvedSystemPrompt = resolveSystemPrompt(void 0, agent_role);
   let fileContext;
   if (files && files.length > 0) {
-    if (files.length > MAX_CONTEXT_FILES) {
-      return {
-        content: [{
-          type: "text",
-          text: `Too many context files (max ${MAX_CONTEXT_FILES}, got ${files.length})`
-        }],
-        isError: true
-      };
-    }
     fileContext = files.map((f) => validateAndReadFile(f, baseDir)).join("\n\n");
   }
   const fullPrompt = buildPromptWithSystemContext(userPrompt, fileContext, resolvedSystemPrompt);

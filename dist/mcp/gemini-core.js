@@ -41,7 +41,6 @@ export const GEMINI_DEFAULT_MODEL = process.env.OMC_GEMINI_DEFAULT_MODEL || 'gem
 export const GEMINI_TIMEOUT = Math.min(Math.max(5000, parseInt(process.env.OMC_GEMINI_TIMEOUT || '3600000', 10) || 3600000), 3600000);
 // Gemini is best for design review and implementation tasks (recommended, not enforced)
 export const GEMINI_RECOMMENDED_ROLES = ['designer', 'writer', 'vision'];
-export const MAX_CONTEXT_FILES = 20;
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
 /**
  * Check if Gemini output/stderr indicates a rate-limit (429) or quota error
@@ -529,15 +528,6 @@ ${resolvedPrompt}`;
     // Build file context
     let fileContext;
     if (files && files.length > 0) {
-        if (files.length > MAX_CONTEXT_FILES) {
-            return {
-                content: [{
-                        type: 'text',
-                        text: `Too many context files (max ${MAX_CONTEXT_FILES}, got ${files.length})`
-                    }],
-                isError: true
-            };
-        }
         fileContext = files.map(f => validateAndReadFile(f, baseDir)).join('\n\n');
     }
     // Combine: system prompt > file context > user prompt

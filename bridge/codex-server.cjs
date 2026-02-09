@@ -14885,7 +14885,6 @@ function validateModelName(model) {
 var CODEX_DEFAULT_MODEL = process.env.OMC_CODEX_DEFAULT_MODEL || "gpt-5.3-codex";
 var CODEX_TIMEOUT = Math.min(Math.max(5e3, parseInt(process.env.OMC_CODEX_TIMEOUT || "3600000", 10) || 36e5), 36e5);
 var CODEX_RECOMMENDED_ROLES = ["architect", "planner", "critic", "analyst", "code-reviewer", "security-reviewer", "tdd-guide"];
-var MAX_CONTEXT_FILES = 20;
 var MAX_FILE_SIZE = 5 * 1024 * 1024;
 function isModelError(output) {
   const lines = output.trim().split("\n").filter((l) => l.trim());
@@ -15397,15 +15396,6 @@ ${detection.installHint}`
   const resolvedSystemPrompt = resolveSystemPrompt(void 0, agent_role);
   let fileContext;
   if (context_files && context_files.length > 0) {
-    if (context_files.length > MAX_CONTEXT_FILES) {
-      return {
-        content: [{
-          type: "text",
-          text: `Too many context files (max ${MAX_CONTEXT_FILES}, got ${context_files.length})`
-        }],
-        isError: true
-      };
-    }
     fileContext = context_files.map((f) => validateAndReadFile(f, baseDir)).join("\n\n");
   }
   const fullPrompt = buildPromptWithSystemContext(userPrompt, fileContext, resolvedSystemPrompt);

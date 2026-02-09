@@ -55,7 +55,6 @@ export const GEMINI_TIMEOUT = Math.min(Math.max(5000, parseInt(process.env.OMC_G
 // Gemini is best for design review and implementation tasks (recommended, not enforced)
 export const GEMINI_RECOMMENDED_ROLES = ['designer', 'writer', 'vision'] as const;
 
-export const MAX_CONTEXT_FILES = 20;
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
 
 /**
@@ -586,15 +585,6 @@ ${resolvedPrompt}`;
   // Build file context
   let fileContext: string | undefined;
   if (files && files.length > 0) {
-    if (files.length > MAX_CONTEXT_FILES) {
-      return {
-        content: [{
-          type: 'text' as const,
-          text: `Too many context files (max ${MAX_CONTEXT_FILES}, got ${files.length})`
-        }],
-        isError: true
-      };
-    }
     fileContext = files.map(f => validateAndReadFile(f, baseDir)).join('\n\n');
   }
 

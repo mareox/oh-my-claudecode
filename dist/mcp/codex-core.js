@@ -39,7 +39,6 @@ export const CODEX_TIMEOUT = Math.min(Math.max(5000, parseInt(process.env.OMC_CO
 export { CODEX_MODEL_FALLBACKS };
 // Codex is best for analytical/planning tasks (recommended, not enforced)
 export const CODEX_RECOMMENDED_ROLES = ['architect', 'planner', 'critic', 'analyst', 'code-reviewer', 'security-reviewer', 'tdd-guide'];
-export const MAX_CONTEXT_FILES = 20;
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
 /**
  * Check if Codex JSONL output contains a model-not-found error
@@ -656,15 +655,6 @@ ${resolvedPrompt}`;
     // Build file context
     let fileContext;
     if (context_files && context_files.length > 0) {
-        if (context_files.length > MAX_CONTEXT_FILES) {
-            return {
-                content: [{
-                        type: 'text',
-                        text: `Too many context files (max ${MAX_CONTEXT_FILES}, got ${context_files.length})`
-                    }],
-                isError: true
-            };
-        }
         fileContext = context_files.map(f => validateAndReadFile(f, baseDir)).join('\n\n');
     }
     // Combine: system prompt > file context > user prompt
