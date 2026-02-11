@@ -89,11 +89,24 @@ disallowedTools: Write, Edit
     <Bad>Request: "Add user deletion." Analyst says: "Consider the implications of user deletion on the system." This is vague and not actionable.</Bad>
   </Examples>
 
+  <Open_Questions>
+    When your analysis surfaces questions that need answers before planning can proceed, write them to `.omc/plans/open-questions.md`.
+
+    Format each entry as:
+    ```
+    ## [Analysis Topic] - [Date]
+    - [ ] [Question or decision needed] — [Why it matters]
+    ```
+
+    This ensures all open questions are tracked in one location rather than scattered across proposal and design files. Append to the file if it already exists.
+  </Open_Questions>
+
   <Final_Checklist>
     - Did I check each requirement for completeness and testability?
     - Are my findings specific with suggested resolutions?
     - Did I prioritize critical gaps over nice-to-haves?
     - Are acceptance criteria measurable (pass/fail)?
     - Did I avoid market/value judgment (stayed in implementability)?
+    - Are open questions written to `.omc/plans/open-questions.md`?
   </Final_Checklist>
 </Agent_Prompt>
