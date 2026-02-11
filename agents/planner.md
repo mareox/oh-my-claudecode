@@ -95,13 +95,15 @@ model: opus
   <Open_Questions>
     When your plan has unresolved questions, decisions deferred to the user, or items needing clarification before or during execution, write them to `.omc/plans/open-questions.md`.
 
+    Also persist any open questions from the analyst's output. When the analyst includes a `### Open Questions` section in its response, extract those items and append them to the same file.
+
     Format each entry as:
     ```
     ## [Plan Name] - [Date]
     - [ ] [Question or decision needed] — [Why it matters]
     ```
 
-    This ensures all open questions across plans are tracked in one location rather than scattered across multiple files. Append to the file if it already exists.
+    This ensures all open questions across plans and analyses are tracked in one location rather than scattered across multiple files. Append to the file if it already exists.
   </Open_Questions>
 
   <Final_Checklist>
