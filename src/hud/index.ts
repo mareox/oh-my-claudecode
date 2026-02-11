@@ -196,6 +196,7 @@ async function calculateSessionHealth(
   sessionStart: Date | undefined,
   contextPercent: number,
   stdin: StatuslineStdin,
+  thresholds?: { budgetWarning: number; budgetCritical: number },
 ): Promise<SessionHealth | null> {
   // Calculate duration (use 0 if no session start)
   const durationMs = sessionStart ? Date.now() - sessionStart.getTime() : 0;
@@ -261,9 +262,11 @@ async function calculateSessionHealth(
     costPerHour = hours > 0 ? sessionCost / hours : 0;
 
     // Adjust health based on cost (Budget warnings)
-    if (sessionCost > 5.0) {
+    const budgetCritical = thresholds?.budgetCritical ?? 5.0;
+    const budgetWarning = thresholds?.budgetWarning ?? 2.0;
+    if (sessionCost > budgetCritical) {
       health = "critical";
-    } else if (sessionCost > 2.0 && health !== "critical") {
+    } else if (sessionCost > budgetWarning && health !== "critical") {
       health = "warning";
     }
   } catch (error) {
@@ -366,6 +369,7 @@ async function main(): Promise<void> {
         transcriptData.sessionStart,
         getContextPercent(stdin),
         stdin,
+        config.thresholds,
       ),
     };
 

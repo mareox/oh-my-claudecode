@@ -290,6 +290,10 @@ export interface HudThresholds {
   contextCritical: number;
   /** Ralph iteration that triggers warning color (default: 7) */
   ralphWarning: number;
+  /** Session cost ($) that triggers budget warning (default: 2.0) */
+  budgetWarning: number;
+  /** Session cost ($) that triggers budget critical alert (default: 5.0) */
+  budgetCritical: number;
 }
 
 export interface HudConfig {
@@ -336,6 +340,8 @@ export const DEFAULT_HUD_CONFIG: HudConfig = {
     contextCompactSuggestion: 80,
     contextCritical: 85,
     ralphWarning: 7,
+    budgetWarning: 2.0,
+    budgetCritical: 5.0,
   },
   staleTaskThresholdMinutes: 30,
 };
