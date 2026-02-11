@@ -6,8 +6,8 @@
  */
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { getClaudeConfigDir } from '../utils/paths.js';
-const CONFIG_FILE = join(getClaudeConfigDir(), '.omc-config.json');
+import { homedir } from 'os';
+const CONFIG_FILE = join(homedir(), '.claude', '.omc-config.json');
 /**
  * Read raw config from .omc-config.json
  */

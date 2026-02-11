@@ -16,6 +16,7 @@ import { execSync } from 'child_process';
 import { TaskTool } from '../hooks/beads-context/types.js';
 import { install as installSisyphus, HOOKS_DIR, isProjectScopedPlugin, isRunningAsPlugin } from '../installer/index.js';
 import { getConfigDir } from '../utils/config-dir.js';
+import type { NotificationConfig } from '../notifications/types.js';
 
 /** GitHub repository information */
 export const REPO_OWNER = 'Yeachan-Heo';
@@ -56,7 +57,7 @@ function syncMarketplaceClone(verbose: boolean = false): { ok: boolean; message:
   return { ok: true, message: 'Marketplace clone updated' };
 }
 
-/** Installation paths */
+/** Installation paths (respects CLAUDE_CONFIG_DIR env var) */
 export const CLAUDE_CONFIG_DIR = getConfigDir();
 export const VERSION_FILE = join(CLAUDE_CONFIG_DIR, '.omc-version.json');
 export const CONFIG_FILE = join(CLAUDE_CONFIG_DIR, '.omc-config.json');
@@ -108,7 +109,7 @@ export interface StopHookCallbacksConfig {
 /**
  * OMC configuration (stored in .omc-config.json)
  */
-export interface SisyphusConfig {
+export interface OMCConfig {
   /** Whether silent auto-updates are enabled (opt-in for security) */
   silentAutoUpdate: boolean;
   /** When the configuration was set */
@@ -135,14 +136,16 @@ export interface SisyphusConfig {
   setupCompleted?: string;
   /** Version of setup wizard that was completed */
   setupVersion?: string;
-  /** Stop hook callback configuration */
+  /** Stop hook callback configuration (legacy, use notifications instead) */
   stopHookCallbacks?: StopHookCallbacksConfig;
+  /** Multi-platform lifecycle notification configuration */
+  notifications?: NotificationConfig;
 }
 
 /**
- * Read the Sisyphus configuration
+ * Read the OMC configuration
  */
-export function getSisyphusConfig(): SisyphusConfig {
+export function getOMCConfig(): OMCConfig {
   if (!existsSync(CONFIG_FILE)) {
     // No config file = disabled by default for security
     return { silentAutoUpdate: false };
@@ -150,7 +153,7 @@ export function getSisyphusConfig(): SisyphusConfig {
 
   try {
     const content = readFileSync(CONFIG_FILE, 'utf-8');
-    const config = JSON.parse(content) as SisyphusConfig;
+    const config = JSON.parse(content) as OMCConfig;
     return {
       silentAutoUpdate: config.silentAutoUpdate ?? false,
       configuredAt: config.configuredAt,
@@ -162,6 +165,7 @@ export function getSisyphusConfig(): SisyphusConfig {
       setupCompleted: config.setupCompleted,
       setupVersion: config.setupVersion,
       stopHookCallbacks: config.stopHookCallbacks,
+      notifications: config.notifications,
     };
   } catch {
     // If config file is invalid, default to disabled for security
@@ -173,7 +177,7 @@ export function getSisyphusConfig(): SisyphusConfig {
  * Check if silent auto-updates are enabled
  */
 export function isSilentAutoUpdateEnabled(): boolean {
-  return getSisyphusConfig().silentAutoUpdate;
+  return getOMCConfig().silentAutoUpdate;
 }
 
 /**
@@ -181,7 +185,7 @@ export function isSilentAutoUpdateEnabled(): boolean {
  * Returns true by default if not explicitly disabled
  */
 export function isEcomodeEnabled(): boolean {
-  const config = getSisyphusConfig();
+  const config = getOMCConfig();
   // Default to true if not configured
   return config.ecomode?.enabled !== false;
 }

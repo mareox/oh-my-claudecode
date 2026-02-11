@@ -8,6 +8,7 @@ import { join } from 'path';
 import { getClaudeConfigDir } from '../../utils/paths.js';
 import type { PluginConfig } from '../../shared/types.js';
 import { colors } from '../utils/formatting.js';
+import { getClaudeConfigDir } from '../../utils/paths.js';
 
 export interface ConflictReport {
   hookConflicts: { event: string; command: string; isOmc: boolean }[];
@@ -143,7 +144,7 @@ export function checkConfigIssues(): ConflictReport['configIssues'] {
       'permissions',
       'magicKeywords',
       'routing',
-      // SisyphusConfig fields (from auto-update.ts / omc-setup)
+      // OMCConfig fields (from auto-update.ts / omc-setup)
       'silentAutoUpdate',
       'configuredAt',
       'configVersion',
@@ -154,6 +155,8 @@ export function checkConfigIssues(): ConflictReport['configIssues'] {
       'ecomode',
       'setupCompleted',
       'setupVersion',
+      'stopHookCallbacks',
+      'notifications',
     ]);
 
     for (const field of Object.keys(config)) {
