@@ -540,7 +540,7 @@ export async function runBridge(config: BridgeConfig): Promise<void> {
       // --- 3. Write heartbeat ---
       writeHeartbeat(workingDirectory, buildHeartbeat(config, 'polling', null, consecutiveErrors));
 
-      // Emit ready after first successful poll cycle (heartbeat + inbox read succeeded)
+      // Emit ready after first successful heartbeat write in poll loop
       if (!readyEmitted) {
         try {
           appendOutbox(teamName, workerName, {
