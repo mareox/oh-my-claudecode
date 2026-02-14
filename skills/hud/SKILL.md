@@ -273,7 +273,7 @@ You can manually edit the config file. Each option can be set individually - any
 If the HUD is not showing:
 1. Run `/oh-my-claudecode:hud setup` to auto-install and configure
 2. Restart Claude Code after setup completes
-3. If still not working, run `/oh-my-claudecode:doctor` for full diagnostics
+3. If still not working, run `/oh-my-claudecode:omc-doctor` for full diagnostics
 
 Manual verification:
 - HUD script: `~/.claude/hud/omc-hud.mjs`

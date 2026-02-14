@@ -1,5 +1,5 @@
 <!-- OMC:START -->
-<!-- OMC:VERSION:4.2.8 -->
+<!-- OMC:VERSION:4.2.9 -->
 # oh-my-claudecode - Intelligent Multi-Agent Orchestration
 
 You are running with oh-my-claudecode (OMC), a multi-agent orchestration layer for Claude Code.
@@ -178,7 +178,7 @@ Workflow Skills:
 - `ultrawork` ("ulw", "ultrawork"): maximum parallelism with parallel agent orchestration
 - `swarm` ("swarm"): compatibility facade over Team; preserves `/swarm` syntax, routes to Team staged pipeline
 - `ultrapilot` ("ultrapilot", "parallel build"): compatibility facade over Team; maps onto Team's staged runtime
-- `ecomode` ("eco", "ecomode", "budget"): token-efficient execution using haiku and sonnet
+- `ecomode` ("ecomode", "eco-mode", "eco mode", "save-tokens"): token-efficient execution using haiku and sonnet
 - `team` ("team", "coordinated team", "team ralph"): N coordinated agents using Claude Code native teams with stage-aware agent routing; supports `team ralph` for persistent team execution
 - `pipeline` ("pipeline", "chain agents"): sequential agent chaining with data passing
 - `ultraqa` (activated by autopilot): QA cycling -- test, verify, fix, repeat
@@ -207,9 +207,9 @@ MCP Delegation (auto-detected when an intent phrase is present):
 
 Notifications: `configure-discord` ("configure discord", "setup discord", "discord webhook"), `configure-telegram` ("configure telegram", "setup telegram", "telegram bot")
 
-Utilities: `cancel`, `note`, `learner`, `omc-setup`, `mcp-setup`, `hud`, `doctor`, `help`, `trace`, `release`, `project-session-manager` (psm), `skill`, `writer-memory`, `ralph-init`, `learn-about-omc`
+Utilities: `cancel`, `note`, `learner`, `omc-setup`, `mcp-setup`, `hud`, `omc-doctor`, `omc-help`, `trace`, `release`, `project-session-manager` (psm), `skill`, `writer-memory`, `ralph-init`, `learn-about-omc`
 
-Conflict resolution: explicit mode keywords (`ulw`, `ultrawork`, `eco`, `ecomode`) override defaults. When both are present, ecomode wins. Generic "fast"/"parallel" reads `~/.claude/.omc-config.json` -> `defaultExecutionMode`. Ralph includes ultrawork (persistence wrapper). Ecomode is a model-routing modifier only. Autopilot can transition to ralph or ultraqa. Autopilot and ultrapilot are mutually exclusive.
+Conflict resolution: explicit mode keywords (`ulw`, `ultrawork`, `ecomode`, `eco-mode`, `eco mode`, `save-tokens`) override defaults. When both are present, ecomode wins. Generic "fast"/"parallel" reads `~/.claude/.omc-config.json` -> `defaultExecutionMode`. Ralph includes ultrawork (persistence wrapper). Ecomode is a model-routing modifier only. Autopilot can transition to ralph or ultraqa. Autopilot and ultrapilot are mutually exclusive.
 </skills>
 
 ---

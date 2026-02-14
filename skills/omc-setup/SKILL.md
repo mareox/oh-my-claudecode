@@ -629,8 +629,8 @@ Ask user: "Would you like to install the OMC CLI for standalone analytics? (Reco
 The CLI (`omc` command) is **no longer supported** via npm/bun global install.
 
 All functionality is available through the plugin system:
-- Use `/oh-my-claudecode:help` for guidance
-- Use `/oh-my-claudecode:doctor` for diagnostics
+- Use `/oh-my-claudecode:omc-help` for guidance
+- Use `/oh-my-claudecode:omc-doctor` for diagnostics
 
 Skip this step - the plugin provides all features.
 

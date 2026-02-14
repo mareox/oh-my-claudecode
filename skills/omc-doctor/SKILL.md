@@ -1,5 +1,5 @@
 ---
-name: doctor
+name: omc-doctor
 description: Diagnose and fix oh-my-claudecode installation issues
 ---
 

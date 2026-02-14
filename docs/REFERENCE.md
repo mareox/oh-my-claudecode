@@ -264,8 +264,8 @@ Always use `oh-my-claudecode:` prefix when calling via Task tool.
 | `note` | Save notes to compaction-resilient notepad | `/oh-my-claudecode:note` |
 | `cancel` | Unified cancellation for all modes | `/oh-my-claudecode:cancel` |
 | `omc-setup` | One-time setup wizard | `/oh-my-claudecode:omc-setup` |
-| `doctor` | Diagnose and fix installation issues | `/oh-my-claudecode:doctor` |
-| `help` | Show OMC usage guide | `/oh-my-claudecode:help` |
+| `omc-doctor` | Diagnose and fix installation issues | `/oh-my-claudecode:omc-doctor` |
+| `omc-help` | Show OMC usage guide | `/oh-my-claudecode:omc-help` |
 | `hud` | Configure HUD statusline | `/oh-my-claudecode:hud` |
 | `release` | Automated release workflow | `/oh-my-claudecode:release` |
 | `mcp-setup` | Configure MCP servers | `/oh-my-claudecode:mcp-setup` |
@@ -303,8 +303,8 @@ All skills are available as slash commands with the prefix `/oh-my-claudecode:`.
 | `/oh-my-claudecode:note <content>` | Save notes to notepad.md |
 | `/oh-my-claudecode:cancel` | Unified cancellation |
 | `/oh-my-claudecode:omc-setup` | One-time setup wizard |
-| `/oh-my-claudecode:doctor` | Diagnose and fix installation issues |
-| `/oh-my-claudecode:help` | Show OMC usage guide |
+| `/oh-my-claudecode:omc-doctor` | Diagnose and fix installation issues |
+| `/oh-my-claudecode:omc-help` | Show OMC usage guide |
 | `/oh-my-claudecode:hud` | Configure HUD statusline |
 | `/oh-my-claudecode:release` | Automated release workflow |
 | `/oh-my-claudecode:mcp-setup` | Configure MCP servers |
@@ -635,7 +635,7 @@ Enable detailed cost tracking in your status line:
 ### Diagnose Installation Issues
 
 ```bash
-/oh-my-claudecode:doctor
+/oh-my-claudecode:omc-doctor
 ```
 
 Checks for:
